@@ -5,7 +5,6 @@ import AssistantTips from "@/components/assistant-tips";
 
 // Import all phases
 import Phase1DataIngestion from "@/components/phases/phase1-data-ingestion";
-import Phase2UrlMode from "@/components/phases/phase2-url-mode";
 import Phase3TestCaseGeneration from "@/components/phases/phase3-test-case-generation";
 import Phase4TestCaseStorage from "@/components/phases/phase4-test-case-storage";
 import Phase5CodeGeneration from "@/components/phases/phase5-code-generation";
@@ -27,9 +26,7 @@ const phaseTips = [
     {
       title: "Data Privacy Tip",
       content: "Make sure your files don't contain sensitive information like passwords, API keys, or personal data before uploading."
-    }
-  ],
-  [
+    },
     {
       title: "URL Mode Best Practices",
       content: "For best results, enter the login URL of your application. Our crawler will navigate and analyze the structure automatically."
@@ -37,10 +34,6 @@ const phaseTips = [
     {
       title: "Authentication Support",
       content: "If your application requires authentication, you can provide credentials in the advanced options section."
-    },
-    {
-      title: "URL Analysis Depth",
-      content: "By default, we scan 3 levels deep from the provided URL. You can adjust this in settings for more thorough analysis."
     }
   ],
   [
@@ -141,14 +134,14 @@ export default function TestAutomationWizard() {
   };
   
   const goToNextPhase = () => {
-    if (currentPhase < 8) {
+    if (currentPhase < 7) {  // Now we have 7 total phases instead of 8
       setCurrentPhase(currentPhase + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const handleComplete = () => {
-    if (currentPhase < 8) {
+    if (currentPhase < 7) {  // Now we have 7 total phases instead of 8
       goToNextPhase();
     } else {
       // Final phase completion action
@@ -160,19 +153,17 @@ export default function TestAutomationWizard() {
     switch (currentPhase) {
       case 1:
         return <Phase1DataIngestion onComplete={handleComplete} />;
-      case 2:
-        return <Phase2UrlMode onComplete={handleComplete} />;
-      case 3:
+      case 2:  // This is now TestCaseGeneration (previously Phase 3)
         return <Phase3TestCaseGeneration onComplete={handleComplete} />;
-      case 4:
+      case 3:  // This is now TestCaseStorage (previously Phase 4)
         return <Phase4TestCaseStorage onComplete={handleComplete} />;
-      case 5:
+      case 4:  // This is now CodeGeneration (previously Phase 5)
         return <Phase5CodeGeneration onComplete={handleComplete} />;
-      case 6:
+      case 5:  // This is now BulkCodeGeneration (previously Phase 6)
         return <Phase6BulkCodeGeneration onComplete={handleComplete} />;
-      case 7:
+      case 6:  // This is now TestExecution (previously Phase 7)
         return <Phase7TestExecution onComplete={handleComplete} />;
-      case 8:
+      case 7:  // This is now Analytics (previously Phase 8)
         return <Phase8Analytics onComplete={handleComplete} />;
       default:
         return <div>Invalid phase</div>;

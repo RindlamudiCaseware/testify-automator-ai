@@ -50,4 +50,3 @@ export type AnalyticsData = {
   executionTime: number;
   successRate: number;
 };
-
