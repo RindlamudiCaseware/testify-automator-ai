@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { toast } from "sonner";
 import Uploader from "@/components/uploader";
@@ -18,7 +19,6 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
   const [isValid, setIsValid] = useState(true);
   const [validationMessage, setValidationMessage] = useState("");
   const [capturedScreenshots, setCapturedScreenshots] = useState<string[]>([]);
-  const [chromaApiKey, setChromaApiKey] = useState("");
   const [chromaCollection, setChromaCollection] = useState("test_automation");
 
   const handleFilesUploaded = (newFiles: File[]) => {
@@ -77,11 +77,9 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
       }
     }
     
-    // Store files in ChromaDB
+    // Store files in ChromaDB (mock)
     if (fileContents.length > 0) {
       try {
-        chromaClient.setApiKey(chromaApiKey);
-        
         // Ensure collection exists
         try {
           await chromaClient.createCollection(chromaCollection);
@@ -97,8 +95,8 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
           fileMetadata
         );
       } catch (error) {
-        console.error("Error storing files in ChromaDB:", error);
-        toast.error("Error storing files in ChromaDB");
+        console.error("Error storing files in mock ChromaDB:", error);
+        toast.error("Error storing files in document storage");
       }
     }
     
@@ -130,9 +128,6 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
     setProgress(0);
     
     try {
-      // Configure ChromaDB client
-      chromaClient.setApiKey(chromaApiKey);
-      
       // Progress tracker
       let currentProgress = 0;
       const progressInterval = setInterval(() => {
@@ -163,8 +158,8 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
             [{ type: "user_story", createdAt: new Date().toISOString() }]
           );
         } catch (error) {
-          console.error("Error storing user story in ChromaDB:", error);
-          toast.error("Error storing user story in ChromaDB");
+          console.error("Error storing user story:", error);
+          toast.error("Error storing user story");
         }
       } else if (inputMode === "url") {
         // Add mockup screenshots for URL mode
@@ -193,8 +188,8 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
             ]
           );
         } catch (error) {
-          console.error("Error storing URL data in ChromaDB:", error);
-          toast.error("Error storing URL data in ChromaDB");
+          console.error("Error storing URL data:", error);
+          toast.error("Error storing URL data");
         }
       }
       
@@ -205,9 +200,9 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
       setTimeout(() => {
         setIsLoading(false);
         if (inputMode === "files") {
-          toast.success(`Successfully ingested ${files.length} files into ChromaDB`);
+          toast.success(`Successfully ingested ${files.length} files into document storage`);
         } else if (inputMode === "story") {
-          toast.success("Successfully processed your user story in ChromaDB");
+          toast.success("Successfully processed your user story");
         } else {
           toast.success(`Successfully captured web application at ${url}`);
         }
@@ -262,36 +257,21 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         </button>
       </div>
 
-      {/* ChromaDB Configuration */}
+      {/* Collection configuration */}
       <div className="p-4 border rounded-lg bg-card space-y-4">
-        <h3 className="text-sm font-medium">ChromaDB Configuration</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label htmlFor="chroma-api-key" className="text-sm font-medium">
-              ChromaDB API Key
-            </label>
-            <input
-              id="chroma-api-key"
-              type="password"
-              value={chromaApiKey}
-              onChange={(e) => setChromaApiKey(e.target.value)}
-              placeholder="Enter your ChromaDB API Key"
-              className="w-full px-3 py-2 border rounded-md"
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="chroma-collection" className="text-sm font-medium">
-              Collection Name
-            </label>
-            <input
-              id="chroma-collection"
-              type="text"
-              value={chromaCollection}
-              onChange={(e) => setChromaCollection(e.target.value)}
-              placeholder="Collection name"
-              className="w-full px-3 py-2 border rounded-md"
-            />
-          </div>
+        <h3 className="text-sm font-medium">Document Storage Configuration</h3>
+        <div className="space-y-1">
+          <label htmlFor="chroma-collection" className="text-sm font-medium">
+            Collection Name
+          </label>
+          <input
+            id="chroma-collection"
+            type="text"
+            value={chromaCollection}
+            onChange={(e) => setChromaCollection(e.target.value)}
+            placeholder="Collection name"
+            className="w-full px-3 py-2 border rounded-md"
+          />
         </div>
       </div>
 
@@ -421,9 +401,9 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
             </div>
             <p className="text-xs text-muted-foreground">
               {inputMode === "files" 
-                ? "Analyzing and storing documents in ChromaDB..." 
+                ? "Analyzing and storing documents..." 
                 : inputMode === "story" 
-                  ? "Processing and embedding user story in ChromaDB..." 
+                  ? "Processing and embedding user story..." 
                   : "Capturing and analyzing web application..."}
             </p>
           </div>

@@ -2,8 +2,66 @@
 // ChromaDB Client for vector database operations
 import { toast } from "sonner";
 
-// Mock ChromaDB API client - replace with actual ChromaDB client in production
-const CHROMA_API_ENDPOINT = "https://api.chromadb.io/v1";  // Replace with your actual endpoint
+// Mock documents storage (in real applications, this would be stored in ChromaDB)
+interface MockStorageItem {
+  id: string;
+  document: string;
+  metadata: Record<string, any>;
+}
+
+// Mock storage for in-memory document handling
+class MockStorage {
+  private collections: Map<string, MockStorageItem[]> = new Map();
+  
+  createCollection(name: string): void {
+    if (!this.collections.has(name)) {
+      this.collections.set(name, []);
+    }
+  }
+  
+  addDocuments(collectionName: string, documents: string[], metadatas: Record<string, any>[]): void {
+    if (!this.collections.has(collectionName)) {
+      this.createCollection(collectionName);
+    }
+    
+    const collection = this.collections.get(collectionName)!;
+    
+    for (let i = 0; i < documents.length; i++) {
+      const id = Math.random().toString(36).substring(2, 15);
+      collection.push({
+        id,
+        document: documents[i],
+        metadata: metadatas[i] || {},
+      });
+    }
+  }
+  
+  getDocuments(collectionName: string): MockStorageItem[] {
+    return this.collections.get(collectionName) || [];
+  }
+  
+  queryCollection(collectionName: string, queryText: string, nResults: number = 5): MockStorageItem[] {
+    const collection = this.collections.get(collectionName) || [];
+    // This is a very simple search implementation
+    // In a real system, this would use embeddings and semantic search
+    return collection
+      .filter(item => item.document.toLowerCase().includes(queryText.toLowerCase()))
+      .slice(0, nResults);
+  }
+  
+  deleteDocument(collectionName: string, documentId: string): void {
+    const collection = this.collections.get(collectionName);
+    if (collection) {
+      const index = collection.findIndex(item => item.id === documentId);
+      if (index !== -1) {
+        collection.splice(index, 1);
+      }
+    }
+  }
+}
+
+// Create a singleton instance of the mock storage
+const mockStorage = new MockStorage();
 
 // Interface for collection data
 interface Collection {
@@ -29,57 +87,23 @@ interface QueryResult {
 }
 
 /**
- * ChromaDB client wrapper
+ * ChromaDB client wrapper (mock implementation)
+ * In a production environment, this would be replaced with actual API calls to ChromaDB
  */
 export class ChromaClient {
-  private apiKey: string = "";
-  private baseUrl: string = CHROMA_API_ENDPOINT;
+  private baseUrl: string = "";
   
-  constructor(apiKey: string = "", baseUrl: string = CHROMA_API_ENDPOINT) {
-    this.apiKey = apiKey;
+  constructor(baseUrl: string = "") {
     this.baseUrl = baseUrl;
+    console.log("Created mock ChromaDB client");
   }
   
   /**
-   * Set API key for ChromaDB
+   * Set API key for ChromaDB - not needed in mock implementation
    */
   setApiKey(apiKey: string): void {
-    this.apiKey = apiKey;
-  }
-  
-  /**
-   * Make authenticated request to ChromaDB
-   */
-  private async makeRequest(
-    path: string, 
-    method: string = 'GET', 
-    body?: any
-  ): Promise<any> {
-    try {
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (this.apiKey) {
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
-      }
-      
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      
-      if (!response.ok) {
-        throw new Error(`ChromaDB API error: ${response.status} ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error("ChromaDB request error:", error);
-      toast.error("Error connecting to ChromaDB");
-      throw error;
-    }
+    // In a mock implementation, we don't need to store the API key
+    console.log("API key setting is ignored in mock implementation");
   }
   
   /**
@@ -87,8 +111,12 @@ export class ChromaClient {
    */
   async listCollections(): Promise<Collection[]> {
     try {
-      const response = await this.makeRequest('/collections');
-      return response.collections || [];
+      // Return the names of collections in the mock storage
+      return Array.from(mockStorage.collections.keys()).map(name => ({
+        id: name,
+        name,
+        metadata: {},
+      }));
     } catch (error) {
       console.error("Error listing collections:", error);
       return [];
@@ -100,13 +128,14 @@ export class ChromaClient {
    */
   async createCollection(name: string, metadata: Record<string, any> = {}): Promise<Collection> {
     try {
-      const response = await this.makeRequest('/collections', 'POST', {
-        name,
-        metadata,
-      });
+      mockStorage.createCollection(name);
       
       toast.success(`Collection "${name}" created successfully`);
-      return response;
+      return {
+        id: name,
+        name,
+        metadata,
+      };
     } catch (error) {
       console.error("Error creating collection:", error);
       throw error;
@@ -123,16 +152,7 @@ export class ChromaClient {
     ids?: string[]
   ): Promise<void> {
     try {
-      // Generate random IDs if not provided
-      if (!ids) {
-        ids = documents.map(() => Math.random().toString(36).substring(2, 15));
-      }
-      
-      await this.makeRequest(`/collections/${collectionName}/add`, 'POST', {
-        ids,
-        documents,
-        metadatas,
-      });
+      mockStorage.addDocuments(collectionName, documents, metadatas);
       
       toast.success(`${documents.length} documents added to "${collectionName}"`);
     } catch (error) {
@@ -150,12 +170,17 @@ export class ChromaClient {
     nResults: number = 5
   ): Promise<QueryResult> {
     try {
-      const response = await this.makeRequest(`/collections/${collectionName}/query`, 'POST', {
-        query_texts: queryTexts,
-        n_results: nResults,
-      });
+      const results = queryTexts.map(queryText => 
+        mockStorage.queryCollection(collectionName, queryText, nResults)
+      );
       
-      return response;
+      // Format results to match the expected ChromaDB response format
+      return {
+        ids: results.map(items => items.map(item => item.id)),
+        documents: results.map(items => items.map(item => item.document)),
+        metadatas: results.map(items => items.map(item => item.metadata)),
+        distances: results.map(items => items.map(() => 0)), // Mock distances
+      };
     } catch (error) {
       console.error("Error querying collection:", error);
       throw error;
@@ -167,8 +192,14 @@ export class ChromaClient {
    */
   async getDocument(collectionName: string, documentId: string): Promise<Document> {
     try {
-      const response = await this.makeRequest(`/collections/${collectionName}/get/${documentId}`);
-      return response;
+      const collection = mockStorage.getDocuments(collectionName);
+      const document = collection.find(item => item.id === documentId);
+      
+      if (!document) {
+        throw new Error(`Document ${documentId} not found`);
+      }
+      
+      return document;
     } catch (error) {
       console.error(`Error getting document ${documentId}:`, error);
       throw error;
@@ -180,7 +211,7 @@ export class ChromaClient {
    */
   async deleteDocument(collectionName: string, documentId: string): Promise<void> {
     try {
-      await this.makeRequest(`/collections/${collectionName}/delete/${documentId}`, 'DELETE');
+      mockStorage.deleteDocument(collectionName, documentId);
       toast.success(`Document deleted successfully`);
     } catch (error) {
       console.error(`Error deleting document ${documentId}:`, error);
