@@ -76,7 +76,7 @@ export default function CodeViewer({
           {code}
         </pre>
       </div>
-      <style jsx>{`
+      <style>{`
         .line-number {
           display: inline-block;
           width: 2em;
