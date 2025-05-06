@@ -1,8 +1,8 @@
-
 import React, { useState } from "react";
 import { toast } from "sonner";
 import Uploader from "@/components/uploader";
 import { Textarea } from "@/components/ui/textarea";
+import { chromaClient } from "@/lib/chroma-client";
 
 interface Phase1Props {
   onComplete: () => void;
@@ -18,6 +18,8 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
   const [isValid, setIsValid] = useState(true);
   const [validationMessage, setValidationMessage] = useState("");
   const [capturedScreenshots, setCapturedScreenshots] = useState<string[]>([]);
+  const [chromaApiKey, setChromaApiKey] = useState("");
+  const [chromaCollection, setChromaCollection] = useState("test_automation");
 
   const handleFilesUploaded = (newFiles: File[]) => {
     setFiles(newFiles);
@@ -56,6 +58,53 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
     setInputMode(mode);
   };
 
+  const processFiles = async (files: File[]): Promise<string[]> => {
+    const fileContents: string[] = [];
+    const fileMetadata: Record<string, any>[] = [];
+    
+    for (const file of files) {
+      try {
+        const text = await file.text();
+        fileContents.push(text);
+        fileMetadata.push({
+          filename: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: new Date(file.lastModified).toISOString(),
+        });
+      } catch (error) {
+        console.error(`Error reading file ${file.name}:`, error);
+      }
+    }
+    
+    // Store files in ChromaDB
+    if (fileContents.length > 0) {
+      try {
+        chromaClient.setApiKey(chromaApiKey);
+        
+        // Ensure collection exists
+        try {
+          await chromaClient.createCollection(chromaCollection);
+        } catch (error) {
+          // Collection might already exist, continue
+          console.log("Collection may already exist, continuing...");
+        }
+        
+        // Add documents to collection
+        await chromaClient.addDocuments(
+          chromaCollection,
+          fileContents,
+          fileMetadata
+        );
+      } catch (error) {
+        console.error("Error storing files in ChromaDB:", error);
+        toast.error("Error storing files in ChromaDB");
+      }
+    }
+    
+    return fileContents;
+  };
+
   const handleSubmit = async () => {
     if (inputMode === "files" && files.length === 0) {
       toast.error("Please upload at least one file to continue.");
@@ -78,41 +127,97 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
     }
 
     setIsLoading(true);
+    setProgress(0);
     
-    // Mock progress simulation
-    let currentProgress = 0;
-    const timer = setInterval(() => {
-      currentProgress += 10;
-      setProgress(currentProgress);
+    try {
+      // Configure ChromaDB client
+      chromaClient.setApiKey(chromaApiKey);
       
-      // Add mockup screenshots for URL mode
-      if (inputMode === "url" && currentProgress === 30) {
-        setCapturedScreenshots(prev => [...prev, "Screenshot 1: Homepage"]);
-      }
-      if (inputMode === "url" && currentProgress === 60) {
-        setCapturedScreenshots(prev => [...prev, "Screenshot 2: Login Form"]);
-      }
-      if (inputMode === "url" && currentProgress === 80) {
-        setCapturedScreenshots(prev => [...prev, "Screenshot 3: Dashboard"]);
-      }
+      // Progress tracker
+      let currentProgress = 0;
+      const progressInterval = setInterval(() => {
+        currentProgress += 5;
+        if (currentProgress > 95) {
+          clearInterval(progressInterval);
+        }
+        setProgress(currentProgress);
+      }, 200);
       
-      if (currentProgress >= 100) {
-        clearInterval(timer);
-        setTimeout(() => {
-          setIsLoading(false);
-          if (inputMode === "files") {
-            toast.success(`Successfully ingested ${files.length} files into ChromaDB`);
-          } else if (inputMode === "story") {
-            toast.success("Successfully processed your user story in ChromaDB");
-          } else {
-            toast.success(`Successfully captured web application at ${url}`);
+      // Process data based on input mode
+      if (inputMode === "files") {
+        await processFiles(files);
+      } else if (inputMode === "story") {
+        try {
+          // Ensure collection exists
+          try {
+            await chromaClient.createCollection(chromaCollection);
+          } catch (error) {
+            // Collection might already exist, continue
+            console.log("Collection may already exist, continuing...");
           }
-          onComplete();
-        }, 500);
+          
+          // Add user story to ChromaDB
+          await chromaClient.addDocuments(
+            chromaCollection,
+            [story],
+            [{ type: "user_story", createdAt: new Date().toISOString() }]
+          );
+        } catch (error) {
+          console.error("Error storing user story in ChromaDB:", error);
+          toast.error("Error storing user story in ChromaDB");
+        }
+      } else if (inputMode === "url") {
+        // Add mockup screenshots for URL mode
+        setCapturedScreenshots(prev => [...prev, "Screenshot 1: Homepage"]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setCapturedScreenshots(prev => [...prev, "Screenshot 2: Login Form"]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setCapturedScreenshots(prev => [...prev, "Screenshot 3: Dashboard"]);
+        
+        try {
+          // Ensure collection exists
+          try {
+            await chromaClient.createCollection(chromaCollection);
+          } catch (error) {
+            // Collection might already exist, continue
+            console.log("Collection may already exist, continuing...");
+          }
+          
+          // Add URL data to ChromaDB
+          await chromaClient.addDocuments(
+            chromaCollection,
+            [url, `Captured URL: ${url}`],
+            [
+              { type: "url", capturedAt: new Date().toISOString() },
+              { type: "url_metadata", screenshots: capturedScreenshots }
+            ]
+          );
+        } catch (error) {
+          console.error("Error storing URL data in ChromaDB:", error);
+          toast.error("Error storing URL data in ChromaDB");
+        }
       }
       
-      setProgress(currentProgress);
-    }, 300);
+      // Set progress to 100% and show success message
+      clearInterval(progressInterval);
+      setProgress(100);
+      
+      setTimeout(() => {
+        setIsLoading(false);
+        if (inputMode === "files") {
+          toast.success(`Successfully ingested ${files.length} files into ChromaDB`);
+        } else if (inputMode === "story") {
+          toast.success("Successfully processed your user story in ChromaDB");
+        } else {
+          toast.success(`Successfully captured web application at ${url}`);
+        }
+        onComplete();
+      }, 500);
+    } catch (error) {
+      console.error("Error during data ingestion:", error);
+      toast.error("Error occurred during data ingestion");
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -155,6 +260,39 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         >
           Enter URL
         </button>
+      </div>
+
+      {/* ChromaDB Configuration */}
+      <div className="p-4 border rounded-lg bg-card space-y-4">
+        <h3 className="text-sm font-medium">ChromaDB Configuration</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label htmlFor="chroma-api-key" className="text-sm font-medium">
+              ChromaDB API Key
+            </label>
+            <input
+              id="chroma-api-key"
+              type="password"
+              value={chromaApiKey}
+              onChange={(e) => setChromaApiKey(e.target.value)}
+              placeholder="Enter your ChromaDB API Key"
+              className="w-full px-3 py-2 border rounded-md"
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="chroma-collection" className="text-sm font-medium">
+              Collection Name
+            </label>
+            <input
+              id="chroma-collection"
+              type="text"
+              value={chromaCollection}
+              onChange={(e) => setChromaCollection(e.target.value)}
+              placeholder="Collection name"
+              className="w-full px-3 py-2 border rounded-md"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="p-6 border rounded-lg bg-card">
