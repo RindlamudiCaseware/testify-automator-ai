@@ -3,6 +3,7 @@ import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Images, MoveHorizontal } from "lucide-react";
+import { CircleDot } from "lucide-react";
 
 interface UploaderProps {
   onFilesUploaded: (files: File[]) => void;
@@ -290,7 +291,7 @@ export default function Uploader({
         </div>
       )}
 
-      {/* File list with drag and drop capability */}
+      {/* File list with drag and drop capability - updated for 3 images in a row */}
       {files.length > 0 && (
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
@@ -303,7 +304,7 @@ export default function Uploader({
             )}
           </div>
           
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {files.map((file, index) => (
               <div
                 key={index}
@@ -313,45 +314,54 @@ export default function Uploader({
                 onDragOver={(e) => handleItemDragOver(e, index)}
                 onDrop={(e) => handleItemDrop(e, index)}
                 className={cn(
-                  "flex items-center justify-between p-2 bg-secondary rounded-lg cursor-move border-2 transition-colors",
+                  "flex flex-col relative p-2 bg-secondary rounded-lg cursor-move border-2 transition-colors",
                   draggedItem === index && "opacity-50",
                   dropTargetIndex === index && "border-primary bg-primary/5",
                   draggedItem !== index && dropTargetIndex !== index && "border-transparent"
                 )}
               >
-                <div className="flex items-center space-x-3 w-full">
+                {/* Number indicator */}
+                <div className="absolute -top-2 -left-2 w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-medium z-10">
+                  {index + 1}
+                </div>
+                
+                <div className="flex flex-col items-center space-y-2 w-full">
                   {file.type.startsWith('image/') && imagePreviews[file.name] ? (
-                    <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                    <div className="w-full h-40 rounded-md overflow-hidden flex-shrink-0 mb-2">
                       <img 
                         src={imagePreviews[file.name]} 
                         alt={file.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     </div>
                   ) : (
-                    getFileIcon(file.name)
+                    <div className="w-full h-40 rounded-md overflow-hidden flex-shrink-0 bg-secondary-foreground/5 flex items-center justify-center mb-2">
+                      {getFileIcon(file.name)}
+                    </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate max-w-[200px] sm:max-w-[300px]">
-                      {file.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate max-w-[180px]">
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFile(file);
+                      }}
+                      className="p-1 hover:bg-primary/20 rounded-full ml-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveFile(file);
-                  }}
-                  className="p-1 hover:bg-primary/20 rounded-full ml-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
               </div>
             ))}
           </div>
