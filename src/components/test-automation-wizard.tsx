@@ -172,29 +172,37 @@ export default function TestAutomationWizard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto py-4 px-4 sm:px-6 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground">
+      <header className="border-b bg-gradient-to-r from-primary/10 to-primary/5">
+        <div className="container mx-auto py-5 px-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-foreground">
                 <path d="m16 18 6-6-6-6"></path>
                 <path d="M8 6 2 12l6 6"></path>
                 <path d="m19 12-7-4"></path>
-                <path d="m19 12-7 4">
-              </path>
+                <path d="m19 12-7 4"></path>
               </svg>
             </div>
-            <h1 className="text-xl font-bold">Testify</h1>
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">Testify</h1>
           </div>
           <nav>
-            <ul className="flex space-x-4">
+            <ul className="flex space-x-6">
               <li>
-                <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <a href="#" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary/70">
+                    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
+                  </svg>
                   Docs
                 </a>
               </li>
               <li>
-                <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <a href="#" className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary/70">
+                    <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                    <path d="M11 8h.01"></path>
+                    <path d="M11 12h.01"></path>
+                    <path d="M11 16h.01"></path>
+                  </svg>
                   Support
                 </a>
               </li>
@@ -203,17 +211,17 @@ export default function TestAutomationWizard() {
         </div>
       </header>
 
-      <main className="container mx-auto py-8 px-4 sm:px-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">AI-Powered Test Automation</h1>
-          <p className="text-muted-foreground">
+      <main className="container mx-auto py-10 px-4 sm:px-6">
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">AI-Powered Test Automation</h1>
+          <p className="text-lg text-muted-foreground">
             Create, store, execute, and analyze automated tests with the power of AI.
           </p>
         </div>
         
         <PhaseStepper currentPhase={currentPhase} onPhaseClick={handlePhaseClick} />
         
-        <div className="bg-card border rounded-lg p-6">
+        <div className="bg-card border rounded-xl p-8 shadow-sm mt-8 animate-fade-in">
           {renderCurrentPhase()}
         </div>
       </main>

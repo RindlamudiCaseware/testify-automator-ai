@@ -42,7 +42,7 @@ class MockStorage {
   
   queryCollection(collectionName: string, queryText: string, nResults: number = 5): MockStorageItem[] {
     const collection = this.collections.get(collectionName) || [];
-    // This is a very simple search implementation
+    // This is a simple search implementation
     // In a real system, this would use embeddings and semantic search
     return collection
       .filter(item => item.document.toLowerCase().includes(queryText.toLowerCase()))
@@ -57,6 +57,11 @@ class MockStorage {
         collection.splice(index, 1);
       }
     }
+  }
+
+  // Add a method to get collection names 
+  getCollectionNames(): string[] {
+    return Array.from(this.collections.keys());
   }
 }
 
@@ -112,7 +117,8 @@ export class ChromaClient {
   async listCollections(): Promise<Collection[]> {
     try {
       // Return the names of collections in the mock storage
-      return Array.from(mockStorage.collections.keys()).map(name => ({
+      // Use the new method instead of directly accessing the private property
+      return mockStorage.getCollectionNames().map(name => ({
         id: name,
         name,
         metadata: {},
