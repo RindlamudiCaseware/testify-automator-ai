@@ -1,6 +1,8 @@
 
 import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { Images, MoveHorizontal } from "lucide-react";
 
 interface UploaderProps {
   onFilesUploaded: (files: File[]) => void;
@@ -22,7 +24,10 @@ export default function Uploader({
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreviews, setImagePreviews] = useState<{[key: string]: string}>({});
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -68,6 +73,19 @@ export default function Uploader({
     return { valid: validFiles, errors: newErrors };
   };
 
+  const generateImagePreview = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreviews(prev => ({
+        ...prev,
+        [file.name]: e.target?.result as string
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const processFiles = (filesToProcess: FileList | null) => {
     if (!filesToProcess || filesToProcess.length === 0) return;
 
@@ -75,6 +93,11 @@ export default function Uploader({
     const { valid, errors: newErrors } = validateFiles(fileArray);
 
     if (valid.length > 0) {
+      // Generate previews for images
+      valid.forEach(file => {
+        generateImagePreview(file);
+      });
+      
       const updatedFiles = [...files, ...valid];
       setFiles(updatedFiles);
       onFilesUploaded(updatedFiles);
@@ -82,6 +105,7 @@ export default function Uploader({
 
     if (newErrors.length > 0) {
       setErrors(newErrors);
+      newErrors.forEach(error => toast.error(error));
     }
   };
 
@@ -103,10 +127,50 @@ export default function Uploader({
     const updatedFiles = files.filter((file) => file !== fileToRemove);
     setFiles(updatedFiles);
     onFilesUploaded(updatedFiles);
+    
+    // Remove image preview if exists
+    if (imagePreviews[fileToRemove.name]) {
+      const updatedPreviews = {...imagePreviews};
+      delete updatedPreviews[fileToRemove.name];
+      setImagePreviews(updatedPreviews);
+    }
   };
 
   const handleRemoveError = (errorToRemove: string) => {
     setErrors(errors.filter((error) => error !== errorToRemove));
+  };
+
+  // Functions for drag and drop reordering
+  const handleItemDragStart = (index: number) => {
+    setDraggedItem(index);
+  };
+
+  const handleItemDragEnd = () => {
+    setDraggedItem(null);
+    setDropTargetIndex(null);
+  };
+
+  const handleItemDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    if (draggedItem === null) return;
+    if (draggedItem !== index) {
+      setDropTargetIndex(index);
+    }
+  };
+
+  const handleItemDrop = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    if (draggedItem === null) return;
+    
+    const updatedFiles = [...files];
+    const [draggedFile] = updatedFiles.splice(draggedItem, 1);
+    updatedFiles.splice(index, 0, draggedFile);
+    
+    setFiles(updatedFiles);
+    onFilesUploaded(updatedFiles);
+    setDraggedItem(null);
+    setDropTargetIndex(null);
+    toast.success("File order updated successfully");
   };
 
   const getFileIcon = (fileName: string) => {
@@ -189,11 +253,7 @@ export default function Uploader({
           accept={acceptedFileTypes}
         />
         <div className="flex flex-col items-center justify-center space-y-2 cursor-pointer">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
+          <Images size={40} className="text-primary" />
           <h3 className="text-lg font-medium">{title}</h3>
           <p className="text-sm text-muted-foreground">{description}</p>
           <p className="text-xs text-muted-foreground mt-2">
@@ -230,16 +290,48 @@ export default function Uploader({
         </div>
       )}
 
-      {/* File list */}
+      {/* File list with drag and drop capability */}
       {files.length > 0 && (
         <div className="mt-4">
-          <h4 className="text-sm font-medium mb-2">Uploaded Files ({files.length}/{maxFiles})</h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium">Uploaded Files ({files.length}/{maxFiles})</h4>
+            {files.length > 1 && (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <MoveHorizontal size={14} className="mr-1" />
+                <span>Drag files to reorder</span>
+              </div>
+            )}
+          </div>
+          
           <div className="space-y-2">
             {files.map((file, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-secondary rounded-lg">
-                <div className="flex items-center space-x-3">
-                  {getFileIcon(file.name)}
-                  <div>
+              <div
+                key={index}
+                draggable
+                onDragStart={() => handleItemDragStart(index)}
+                onDragEnd={handleItemDragEnd}
+                onDragOver={(e) => handleItemDragOver(e, index)}
+                onDrop={(e) => handleItemDrop(e, index)}
+                className={cn(
+                  "flex items-center justify-between p-2 bg-secondary rounded-lg cursor-move border-2 transition-colors",
+                  draggedItem === index && "opacity-50",
+                  dropTargetIndex === index && "border-primary bg-primary/5",
+                  draggedItem !== index && dropTargetIndex !== index && "border-transparent"
+                )}
+              >
+                <div className="flex items-center space-x-3 w-full">
+                  {file.type.startsWith('image/') && imagePreviews[file.name] ? (
+                    <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                      <img 
+                        src={imagePreviews[file.name]} 
+                        alt={file.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    getFileIcon(file.name)
+                  )}
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate max-w-[200px] sm:max-w-[300px]">
                       {file.name}
                     </p>
@@ -253,7 +345,7 @@ export default function Uploader({
                     e.stopPropagation();
                     handleRemoveFile(file);
                   }}
-                  className="p-1 hover:bg-primary/20 rounded-full"
+                  className="p-1 hover:bg-primary/20 rounded-full ml-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
