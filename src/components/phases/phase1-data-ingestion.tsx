@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { toast } from "sonner";
 import Uploader from "@/components/uploader";
@@ -19,7 +18,8 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
   const [isValid, setIsValid] = useState(true);
   const [validationMessage, setValidationMessage] = useState("");
   const [capturedScreenshots, setCapturedScreenshots] = useState<string[]>([]);
-  const [chromaCollection, setChromaCollection] = useState("test_automation");
+  // Hidden collection name, not exposed in UI
+  const defaultCollection = "test_automation";
 
   const handleFilesUploaded = (newFiles: File[]) => {
     setFiles(newFiles);
@@ -82,7 +82,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
       try {
         // Ensure collection exists
         try {
-          await chromaClient.createCollection(chromaCollection);
+          await chromaClient.createCollection(defaultCollection);
         } catch (error) {
           // Collection might already exist, continue
           console.log("Collection may already exist, continuing...");
@@ -90,7 +90,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         
         // Add documents to collection
         await chromaClient.addDocuments(
-          chromaCollection,
+          defaultCollection,
           fileContents,
           fileMetadata
         );
@@ -145,7 +145,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         try {
           // Ensure collection exists
           try {
-            await chromaClient.createCollection(chromaCollection);
+            await chromaClient.createCollection(defaultCollection);
           } catch (error) {
             // Collection might already exist, continue
             console.log("Collection may already exist, continuing...");
@@ -153,7 +153,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
           
           // Add user story to ChromaDB
           await chromaClient.addDocuments(
-            chromaCollection,
+            defaultCollection,
             [story],
             [{ type: "user_story", createdAt: new Date().toISOString() }]
           );
@@ -172,7 +172,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         try {
           // Ensure collection exists
           try {
-            await chromaClient.createCollection(chromaCollection);
+            await chromaClient.createCollection(defaultCollection);
           } catch (error) {
             // Collection might already exist, continue
             console.log("Collection may already exist, continuing...");
@@ -180,7 +180,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
           
           // Add URL data to ChromaDB
           await chromaClient.addDocuments(
-            chromaCollection,
+            defaultCollection,
             [url, `Captured URL: ${url}`],
             [
               { type: "url", capturedAt: new Date().toISOString() },
@@ -255,24 +255,6 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         >
           Enter URL
         </button>
-      </div>
-
-      {/* Collection configuration */}
-      <div className="p-4 border rounded-lg bg-card space-y-4">
-        <h3 className="text-sm font-medium">Document Storage Configuration</h3>
-        <div className="space-y-1">
-          <label htmlFor="chroma-collection" className="text-sm font-medium">
-            Collection Name
-          </label>
-          <input
-            id="chroma-collection"
-            type="text"
-            value={chromaCollection}
-            onChange={(e) => setChromaCollection(e.target.value)}
-            placeholder="Collection name"
-            className="w-full px-3 py-2 border rounded-md"
-          />
-        </div>
       </div>
 
       <div className="p-6 border rounded-lg bg-card">

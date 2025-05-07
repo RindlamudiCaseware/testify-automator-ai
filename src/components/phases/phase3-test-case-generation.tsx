@@ -14,7 +14,6 @@ export default function Phase3TestCaseGeneration({ onComplete }: Phase3Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
-  const [chromaCollection, setChromaCollection] = useState("test_automation");
   
   const generateTestCases = async () => {
     setIsGenerating(true);
@@ -22,8 +21,9 @@ export default function Phase3TestCaseGeneration({ onComplete }: Phase3Props) {
     setTestCases([]);
     
     try {
-      // Fetch data from ChromaDB to generate test cases
-      console.log("Fetching data from ChromaDB collection:", chromaCollection);
+      // Set default collection name without showing it in the UI
+      const defaultCollection = "test_automation";
+      console.log("Fetching data from ChromaDB collection:", defaultCollection);
       
       // Mock the loading process first
       let currentProgress = 0;
@@ -58,7 +58,7 @@ export default function Phase3TestCaseGeneration({ onComplete }: Phase3Props) {
       try {
         // Query ChromaDB for stored data
         const queryResult = await chromaClient.queryCollection(
-          chromaCollection,
+          defaultCollection,
           ["test cases", "requirements"], // Example query
           10 // Get top 10 relevant documents
         );
@@ -114,23 +114,6 @@ export default function Phase3TestCaseGeneration({ onComplete }: Phase3Props) {
         <p className="text-muted-foreground">
           Our AI analyzes your ChromaDB data and generates comprehensive test cases.
         </p>
-      </div>
-
-      {/* ChromaDB Collection selector */}
-      <div className="p-4 border rounded-lg bg-card space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">ChromaDB Collection</h3>
-          <div className="flex items-center space-x-2">
-            <input
-              type="text"
-              value={chromaCollection}
-              onChange={(e) => setChromaCollection(e.target.value)}
-              placeholder="Collection name"
-              className="px-3 py-1 text-sm border rounded-md"
-              disabled={isGenerating}
-            />
-          </div>
-        </div>
       </div>
 
       {isGenerating ? (
