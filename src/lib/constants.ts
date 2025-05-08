@@ -1,4 +1,5 @@
-import { Phase } from "./types";
+
+import { Phase, TestStatus } from "./types";
 
 export const PHASES: Phase[] = [
   {
@@ -73,7 +74,7 @@ export const MOCK_TEST_CASES = [
       "User should be redirected to the dashboard",
       "Welcome message should be displayed"
     ],
-    status: "passed",
+    status: "passed" as TestStatus,
     createdAt: new Date(),
     updatedAt: new Date()
   },
@@ -90,7 +91,7 @@ export const MOCK_TEST_CASES = [
       "Search results should be displayed",
       "Results should match the search criteria"
     ],
-    status: "failed",
+    status: "failed" as TestStatus,
     createdAt: new Date(),
     updatedAt: new Date()
   },
@@ -108,7 +109,7 @@ export const MOCK_TEST_CASES = [
       "Cart count should be updated",
       "Success message should be displayed"
     ],
-    status: "pending",
+    status: "pending" as TestStatus,
     createdAt: new Date(),
     updatedAt: new Date()
   }

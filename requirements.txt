@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pytesseract
+pillow
+chromadb
+sentence-transformers
+playwright
+python-multipart
+bs4

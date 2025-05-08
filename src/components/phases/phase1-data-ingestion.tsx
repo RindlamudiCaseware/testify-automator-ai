@@ -1,8 +1,8 @@
-
 import React, { useState } from "react";
 import { toast } from "sonner";
 import Uploader from "@/components/uploader";
 import { Textarea } from "@/components/ui/textarea";
+import { chromaClient } from "@/lib/chroma-client";
 
 interface Phase1Props {
   onComplete: () => void;
@@ -18,6 +18,8 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
   const [isValid, setIsValid] = useState(true);
   const [validationMessage, setValidationMessage] = useState("");
   const [capturedScreenshots, setCapturedScreenshots] = useState<string[]>([]);
+  // Hidden collection name, not exposed in UI
+  const defaultCollection = "test_automation";
 
   const handleFilesUploaded = (newFiles: File[]) => {
     setFiles(newFiles);
@@ -38,7 +40,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
       setValidationMessage("");
     }
   };
- 
+
   const validateUrl = (input: string) => {
     try {
       new URL(input);
@@ -54,6 +56,51 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
 
   const handleModeToggle = (mode: "files" | "story" | "url") => {
     setInputMode(mode);
+  };
+
+  const processFiles = async (files: File[]): Promise<string[]> => {
+    const fileContents: string[] = [];
+    const fileMetadata: Record<string, any>[] = [];
+    
+    for (const file of files) {
+      try {
+        const text = await file.text();
+        fileContents.push(text);
+        fileMetadata.push({
+          filename: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: new Date(file.lastModified).toISOString(),
+        });
+      } catch (error) {
+        console.error(`Error reading file ${file.name}:`, error);
+      }
+    }
+    
+    // Store files in ChromaDB (mock)
+    if (fileContents.length > 0) {
+      try {
+        // Ensure collection exists
+        try {
+          await chromaClient.createCollection(defaultCollection);
+        } catch (error) {
+          // Collection might already exist, continue
+          console.log("Collection may already exist, continuing...");
+        }
+        
+        // Add documents to collection
+        await chromaClient.addDocuments(
+          defaultCollection,
+          fileContents,
+          fileMetadata
+        );
+      } catch (error) {
+        console.error("Error storing files in mock ChromaDB:", error);
+        toast.error("Error storing files in document storage");
+      }
+    }
+    
+    return fileContents;
   };
 
   const handleSubmit = async () => {
@@ -78,43 +125,95 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
     }
 
     setIsLoading(true);
+    setProgress(0);
     
-    // Mock progress simulation
-    let currentProgress = 0;
-    const timer = setInterval(() => {
-      currentProgress += 10;
-      setProgress(currentProgress);
+    try {
+      // Progress tracker
+      let currentProgress = 0;
+      const progressInterval = setInterval(() => {
+        currentProgress += 5;
+        if (currentProgress > 95) {
+          clearInterval(progressInterval);
+        }
+        setProgress(currentProgress);
+      }, 200);
       
-      // Add mockup screenshots for URL mode
-      if (inputMode === "url" && currentProgress === 30) {
-        setCapturedScreenshots(prev => [...prev, "Screenshot 1: Homepage"]);
-      }
-      if (inputMode === "url" && currentProgress === 60) {
-        setCapturedScreenshots(prev => [...prev, "Screenshot 2: Login Form"]);
-      }
-      if (inputMode === "url" && currentProgress === 80) {
-        setCapturedScreenshots(prev => [...prev, "Screenshot 3: Dashboard"]);
-      }
-      
-      if (currentProgress >= 100) {
-        clearInterval(timer);
-        setTimeout(() => {
-          setIsLoading(false);
-          if (inputMode === "files") {
-            toast.success(`Successfully ingested ${files.length} files into ChromaDB`);
-          } else if (inputMode === "story") {
-            toast.success("Successfully processed your user story in ChromaDB");
-          } else {
-            toast.success(`Successfully captured web application at ${url}`);
+      // Process data based on input mode
+      if (inputMode === "files") {
+        await processFiles(files);
+      } else if (inputMode === "story") {
+        try {
+          // Ensure collection exists
+          try {
+            await chromaClient.createCollection(defaultCollection);
+          } catch (error) {
+            // Collection might already exist, continue
+            console.log("Collection may already exist, continuing...");
           }
-          onComplete();
-        }, 500);
+          
+          // Add user story to ChromaDB
+          await chromaClient.addDocuments(
+            defaultCollection,
+            [story],
+            [{ type: "user_story", createdAt: new Date().toISOString() }]
+          );
+        } catch (error) {
+          console.error("Error storing user story:", error);
+          toast.error("Error storing user story");
+        }
+      } else if (inputMode === "url") {
+        // Add mockup screenshots for URL mode
+        setCapturedScreenshots(prev => [...prev, "Screenshot 1: Homepage"]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setCapturedScreenshots(prev => [...prev, "Screenshot 2: Login Form"]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setCapturedScreenshots(prev => [...prev, "Screenshot 3: Dashboard"]);
+        
+        try {
+          // Ensure collection exists
+          try {
+            await chromaClient.createCollection(defaultCollection);
+          } catch (error) {
+            // Collection might already exist, continue
+            console.log("Collection may already exist, continuing...");
+          }
+          
+          // Add URL data to ChromaDB
+          await chromaClient.addDocuments(
+            defaultCollection,
+            [url, `Captured URL: ${url}`],
+            [
+              { type: "url", capturedAt: new Date().toISOString() },
+              { type: "url_metadata", screenshots: capturedScreenshots }
+            ]
+          );
+        } catch (error) {
+          console.error("Error storing URL data:", error);
+          toast.error("Error storing URL data");
+        }
       }
       
-      setProgress(currentProgress);
-    }, 300);
+      // Set progress to 100% and show success message
+      clearInterval(progressInterval);
+      setProgress(100);
+      
+      setTimeout(() => {
+        setIsLoading(false);
+        if (inputMode === "files") {
+          toast.success(`Successfully ingested ${files.length} files into document storage`);
+        } else if (inputMode === "story") {
+          toast.success("Successfully processed your user story");
+        } else {
+          toast.success(`Successfully captured web application at ${url}`);
+        }
+        onComplete();
+      }, 500);
+    } catch (error) {
+      console.error("Error during data ingestion:", error);
+      toast.error("Error occurred during data ingestion");
+      setIsLoading(false);
+    }
   };
-
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -284,9 +383,9 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
             </div>
             <p className="text-xs text-muted-foreground">
               {inputMode === "files" 
-                ? "Analyzing and storing documents in ChromaDB..." 
+                ? "Analyzing and storing documents..." 
                 : inputMode === "story" 
-                  ? "Processing and embedding user story in ChromaDB..." 
+                  ? "Processing and embedding user story..." 
                   : "Capturing and analyzing web application..."}
             </p>
           </div>

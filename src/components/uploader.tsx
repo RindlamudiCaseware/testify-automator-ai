@@ -1,10 +1,9 @@
+
 import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Images, MoveHorizontal } from "lucide-react";
 import { CircleDot } from "lucide-react";
-import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
-
 
 interface UploaderProps {
   onFilesUploaded: (files: File[]) => void;
@@ -371,4 +370,3 @@ export default function Uploader({
     </div>
   );
 }
-

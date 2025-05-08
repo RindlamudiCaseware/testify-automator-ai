@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { TestCase } from "@/lib/types";
+import { TestCase, TestStatus } from "@/lib/types";
 import { MOCK_TEST_CASES, SAMPLE_PLAYWRIGHT_CODE } from "@/lib/constants";
 import { StatusBadge } from "@/components/status-badge";
 import CodeViewer from "@/components/code-viewer";
