@@ -25,6 +25,7 @@ def _sanitize_metadata_value(value):
     return value
 
 def upsert_text_record(record: dict):
+    print(f"[DEBUG] Upserting OCR record: {record}")
     bbox_values = record.get('bbox') or [0,0,0,0]
     bbox_str = ",".join(map(str, bbox_values))
 

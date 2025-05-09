@@ -8,9 +8,9 @@ def sanitize_metadata(record: dict) -> dict:
     sanitized = {}
     for k, v in record.items():
         if v is None:
-            sanitized[k] = ""  # replace None with empty string
+            sanitized[k] = ""
         elif isinstance(v, (dict, list)):
-            sanitized[k] = str(v)  # convert dict/list to string
+            sanitized[k] = str(v)
         else:
             sanitized[k] = v
     return sanitized
@@ -101,7 +101,9 @@ async def process_url_and_update_chroma(url: str, chroma_collection=None, embedd
                 embedding = None
                 if embedding_function:
                     try:
-                        embedding = embedding_function([document_content])[0]
+                        # ✅ key change: use label_text as embedding input
+                        text_to_embed = label_text.strip() or tag.get("aria-label") or tag.get("placeholder") or tag.get("alt") or tag.get("name") or tag.get_text(strip=True) or document_content
+                        embedding = embedding_function([text_to_embed])[0]
                     except Exception as emb_err:
                         print(f"⚠️ [EMBEDDING] Failed: {emb_err}")
 
@@ -110,7 +112,7 @@ async def process_url_and_update_chroma(url: str, chroma_collection=None, embedd
                     embedding_vector = embedding.tolist() if embedding is not None else None
                     chroma_collection.upsert(
                         ids=[element_id],
-                        documents=[document_content],
+                        documents=[text_to_embed],  # ✅ also store what was embedded
                         metadatas=[sanitized_record],
                         embeddings=[embedding_vector] if embedding_vector else None
                     )

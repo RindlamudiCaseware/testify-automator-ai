@@ -1,10 +1,10 @@
 import pytesseract
 from PIL import Image
 import uuid
-from utils.file_utils import save_region
+from utils.file_utils import save_region  # ✅ make sure save_region is updated as in earlier message
 from services.chroma_service import upsert_text_record
 from config.settings import DATA_PATH
-from typing import List, Optional
+from typing import List,Optional
 import os
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Users\RajeshIndlamudi\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
@@ -13,6 +13,7 @@ def sanitize_metadata(record: dict) -> dict:
     return {k: (str(v) if v is not None and not isinstance(v, (dict, list)) else "" if v is None else str(v)) for k, v in record.items()}
 
 async def process_image(image: Image.Image, filename: str, base_folder: Optional[str] = None) -> List[dict]:
+    # ✅ we IGNORE base_folder now → always use DATA_PATH
     page_name = os.path.splitext(os.path.basename(filename))[0]
 
     image_dir = os.path.join(DATA_PATH, "images")
@@ -20,7 +21,7 @@ async def process_image(image: Image.Image, filename: str, base_folder: Optional
     image_save_path = os.path.join(image_dir, filename)
     image.save(image_save_path)
 
-    regions_dir = os.path.join(base_folder or DATA_PATH, "regions")
+    regions_dir = os.path.join(DATA_PATH, "regions")  # ✅ force DATA_PATH/regions
     os.makedirs(regions_dir, exist_ok=True)
 
     data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
@@ -46,23 +47,23 @@ async def process_image(image: Image.Image, filename: str, base_folder: Optional
             "text": text,
             "bbox": f"{x},{y},{w},{h}",
             "region_image_path": region_img_path,
-            "locator": "",  # ✅ placeholder
+            "locator": "",
             "css_selector": "",
             "xpath": "",
             "get_by_text": "",
             "get_by_role": "",
             "intent": "",
             "html_snippet": "",
-            "x": str(x),
-            "y": str(y),
-            "width": str(w),
-            "height": str(h),
-            "confidence_score": "1.0",
-            "visibility_score": "1.0",
-            "locator_stability_score": "1.0",
+            "x": x,
+            "y": y,
+            "width": w,
+            "height": h,
+            "confidence_score": 1.0,
+            "visibility_score": 1.0,
+            "locator_stability_score": 1.0,
             "used_in_tests": "[]",
             "last_tested": "",
-            "healing_success_rate": "0.0",
+            "healing_success_rate": 0.0,
             "snapshot_id": "",
             "match_timestamp": ""
         }
@@ -70,9 +71,9 @@ async def process_image(image: Image.Image, filename: str, base_folder: Optional
         sanitized_record = sanitize_metadata(record)
 
         try:
-            upsert_text_record(sanitized_record)  # your wrapper → should call chroma_collection.add()
+            upsert_text_record(sanitized_record)
             results.append(sanitized_record)
         except Exception as e:
-            print(f"⚠️ Skipping {filename}: {e}")
+            print(f"⚠️ Skipping {filename} entry {unique_id}: {e}")
 
     return results
