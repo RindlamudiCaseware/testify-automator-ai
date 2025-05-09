@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import Uploader from "@/components/uploader";
 import { Textarea } from "@/components/ui/textarea";
 import { chromaClient } from "@/lib/chroma-client";
-import { uploadImage, submitUrl } from "@/api"; // ✅ link to axios API
+import { uploadImage, submitUrl } from "@/api"; 
+import { FileIcon } from "@/components/file-icon";
 
 interface Phase1Props {
   onComplete: () => void;
@@ -21,6 +22,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
   const [isValid, setIsValid] = useState(true);
   const [validationMessage, setValidationMessage] = useState("");
   const [capturedScreenshots, setCapturedScreenshots] = useState<string[]>([]);
+  const [dataIngested, setDataIngested] = useState(false);
 
   const handleFilesUploaded = (newFiles: File[]) => {
     setFiles(newFiles);
@@ -94,7 +96,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
       if (inputMode === "files") {
         for (const file of files) {
           try {
-            const result = await uploadImage(file); // ✅ send file to backend
+            const result = await uploadImage(file);
             toast.success(`Uploaded ${file.name}`);
             console.log("Upload response:", result);
           } catch (error: any) {
@@ -103,7 +105,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         }
       } else if (inputMode === "url") {
         try {
-          const result = await submitUrl(url); // ✅ send URL to backend
+          const result = await submitUrl(url);
           toast.success(`Submitted URL: ${url}`);
           console.log("URL submission response:", result);
         } catch (error: any) {
@@ -123,15 +125,24 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
 
       clearInterval(progressInterval);
       setProgress(100);
+      
+      // Set data as ingested
+      setDataIngested(true);
+      
       setTimeout(() => {
         setIsLoading(false);
-        onComplete();
+        // Don't automatically complete the phase so users can see the file icon
+        // onComplete();
       }, 500);
     } catch (error) {
       console.error("Submit error:", error);
       toast.error("Error during submission.");
       setIsLoading(false);
     }
+  };
+
+  const handleContinue = () => {
+    onComplete();
   };
 
   return (
@@ -176,48 +187,60 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         </button>
       </div>
 
-      <div className="p-6 border rounded-lg bg-card">
-        {inputMode === "files" ? (
-          <Uploader
-            onFilesUploaded={handleFilesUploaded}
-            title="Upload your test data"
-            description="Drag & drop your files here or click to browse"
-            maxFiles={20}
-            maxSizeInMB={20}
-          />
-        ) : inputMode === "story" ? (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Enter user story or requirements</h3>
-            <Textarea
-              value={story}
-              onChange={handleStoryChange}
-              placeholder="As a user, I want to be able to... so that I can..."
-              className="min-h-[200px]"
+      {!dataIngested ? (
+        <div className="p-6 border rounded-lg bg-card">
+          {inputMode === "files" ? (
+            <Uploader
+              onFilesUploaded={handleFilesUploaded}
+              title="Upload your test data"
+              description="Drag & drop your files here or click to browse"
+              maxFiles={20}
+              maxSizeInMB={20}
             />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Enter web application URL</h3>
-            <div className="space-y-2">
-              <label htmlFor="url-input" className="text-sm font-medium">
-                Web Application URL
-              </label>
-              <input
-                id="url-input"
-                type="text"
-                value={url}
-                onChange={handleUrlChange}
-                placeholder="https://example.com"
-                className={`w-full px-4 py-2 border rounded-md bg-background ${
-                  !isValid ? "border-destructive focus:ring-destructive" : ""
-                }`}
-                disabled={isLoading}
+          ) : inputMode === "story" ? (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Enter user story or requirements</h3>
+              <Textarea
+                value={story}
+                onChange={handleStoryChange}
+                placeholder="As a user, I want to be able to... so that I can..."
+                className="min-h-[200px]"
               />
-              {!isValid && <p className="text-xs text-destructive">{validationMessage}</p>}
             </div>
+          ) : (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Enter web application URL</h3>
+              <div className="space-y-2">
+                <label htmlFor="url-input" className="text-sm font-medium">
+                  Web Application URL
+                </label>
+                <input
+                  id="url-input"
+                  type="text"
+                  value={url}
+                  onChange={handleUrlChange}
+                  placeholder="https://example.com"
+                  className={`w-full px-4 py-2 border rounded-md bg-background ${
+                    !isValid ? "border-destructive focus:ring-destructive" : ""
+                  }`}
+                  disabled={isLoading}
+                />
+                {!isValid && <p className="text-xs text-destructive">{validationMessage}</p>}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="p-6 border rounded-lg bg-card flex flex-col items-center">
+          <h3 className="text-lg font-medium mb-6">Data Successfully Ingested</h3>
+          <div className="flex items-center justify-center mb-6">
+            <FileIcon name="Data in ChromaDB" type="data" size="lg" />
           </div>
-        )}
-      </div>
+          <p className="text-center text-muted-foreground mb-4">
+            Your data has been successfully ingested into ChromaDB and is ready for processing.
+          </p>
+        </div>
+      )}
 
       {isLoading && (
         <div className="space-y-4">
@@ -243,44 +266,53 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
       )}
 
       <div className="flex justify-end">
-        <button
-          onClick={handleSubmit}
-          disabled={
-            isLoading ||
-            (inputMode === "files" && files.length === 0) ||
-            (inputMode === "story" && !story.trim()) ||
-            (inputMode === "url" && (!url || !isValid))
-          }
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? (
-            <div className="flex items-center">
-              <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Processing...
-            </div>
-          ) : (
-            "Continue"
-          )}
-        </button>
+        {!dataIngested ? (
+          <button
+            onClick={handleSubmit}
+            disabled={
+              isLoading ||
+              (inputMode === "files" && files.length === 0) ||
+              (inputMode === "story" && !story.trim()) ||
+              (inputMode === "url" && (!url || !isValid))
+            }
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <div className="flex items-center">
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Processing...
+              </div>
+            ) : (
+              "Continue"
+            )}
+          </button>
+        ) : (
+          <button
+            onClick={handleContinue}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          >
+            Proceed to Next Step
+          </button>
+        )}
       </div>
     </div>
   );
