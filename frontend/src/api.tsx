@@ -43,7 +43,7 @@ export async function submitUrl(url: string): Promise<any> {
 // ✅ Fetch test cases
 export async function fetchTestCases(): Promise<TestCase[]> {
     try {
-        const response = await apiClient.get("/get-testcases");
+        const response = await apiClient.get("/chroma/data");
         return response.data;
     } catch (error: any) {
         console.error("fetchTestCases error:", error);
@@ -92,16 +92,15 @@ export async function fetchGeneratedCode(testCaseId: string): Promise<string> {
   // ✅ Add this in src/api.tsx
 
 export async function generateBulkCode(
-    testCaseIds: string[],
-    gitOptions: { gitRepo: string; gitBranch: string }
-  ): Promise<{ results: { id: string; title: string; status: "completed" | "failed" }[] }> {
-    try {
-      const payload = { testCaseIds, gitOptions };
-      const response = await apiClient.post("/generate-bulk-code", payload);
-      return response.data;
-    } catch (error: any) {
-      console.error("generateBulkCode error:", error);
-      throw error.response?.data?.detail || error.message || "Bulk code generation failed";
-    }
+  testCaseIds: string[],
+  gitOptions: { gitRepo: string; gitBranch: string }
+): Promise<{ results: { id: string; title: string; status: "completed" | "failed" }[] }> {
+  try {
+    const payload = { testCaseIds, gitOptions };
+    const response = await apiClient.post("/generate-bulk-code", payload);
+    return response.data;
+  } catch (error: any) {
+    console.error("generateBulkCode error:", error);
+    throw error.response?.data?.detail || error.message || "Bulk code generation failed";
   }
-  
+}
