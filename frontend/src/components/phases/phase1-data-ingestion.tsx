@@ -1,8 +1,11 @@
+// src/components/Phase1DataIngestion.tsx
+
 import React, { useState } from "react";
 import { toast } from "sonner";
 import Uploader from "@/components/uploader";
 import { Textarea } from "@/components/ui/textarea";
 import { chromaClient } from "@/lib/chroma-client";
+import { uploadImage, submitUrl } from "@/api"; // ✅ link to axios API
 
 interface Phase1Props {
   onComplete: () => void;
@@ -18,8 +21,6 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
   const [isValid, setIsValid] = useState(true);
   const [validationMessage, setValidationMessage] = useState("");
   const [capturedScreenshots, setCapturedScreenshots] = useState<string[]>([]);
-  // Hidden collection name, not exposed in UI
-  const defaultCollection = "test_automation";
 
   const handleFilesUploaded = (newFiles: File[]) => {
     setFiles(newFiles);
@@ -32,7 +33,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     setUrl(input);
-    
+
     if (input) {
       validateUrl(input);
     } else {
@@ -58,51 +59,6 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
     setInputMode(mode);
   };
 
-  const processFiles = async (files: File[]): Promise<string[]> => {
-    const fileContents: string[] = [];
-    const fileMetadata: Record<string, any>[] = [];
-    
-    for (const file of files) {
-      try {
-        const text = await file.text();
-        fileContents.push(text);
-        fileMetadata.push({
-          filename: file.name,
-          type: file.type,
-          size: file.size,
-          lastModified: new Date(file.lastModified).toISOString(),
-        });
-      } catch (error) {
-        console.error(`Error reading file ${file.name}:`, error);
-      }
-    }
-    
-    // Store files in ChromaDB (mock)
-    if (fileContents.length > 0) {
-      try {
-        // Ensure collection exists
-        try {
-          await chromaClient.createCollection(defaultCollection);
-        } catch (error) {
-          // Collection might already exist, continue
-          console.log("Collection may already exist, continuing...");
-        }
-        
-        // Add documents to collection
-        await chromaClient.addDocuments(
-          defaultCollection,
-          fileContents,
-          fileMetadata
-        );
-      } catch (error) {
-        console.error("Error storing files in mock ChromaDB:", error);
-        toast.error("Error storing files in document storage");
-      }
-    }
-    
-    return fileContents;
-  };
-
   const handleSubmit = async () => {
     if (inputMode === "files" && files.length === 0) {
       toast.error("Please upload at least one file to continue.");
@@ -110,7 +66,7 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
     }
 
     if (inputMode === "story" && !story.trim()) {
-      toast.error("Please enter a user story or requirement to continue.");
+      toast.error("Please enter a user story to continue.");
       return;
     }
 
@@ -126,91 +82,54 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
 
     setIsLoading(true);
     setProgress(0);
-    
+
     try {
-      // Progress tracker
       let currentProgress = 0;
       const progressInterval = setInterval(() => {
-        currentProgress += 5;
-        if (currentProgress > 95) {
-          clearInterval(progressInterval);
-        }
+        currentProgress += 10;
+        if (currentProgress >= 90) clearInterval(progressInterval);
         setProgress(currentProgress);
       }, 200);
-      
-      // Process data based on input mode
+
       if (inputMode === "files") {
-        await processFiles(files);
-      } else if (inputMode === "story") {
-        try {
-          // Ensure collection exists
+        for (const file of files) {
           try {
-            await chromaClient.createCollection(defaultCollection);
-          } catch (error) {
-            // Collection might already exist, continue
-            console.log("Collection may already exist, continuing...");
+            const result = await uploadImage(file); // ✅ send file to backend
+            toast.success(`Uploaded ${file.name}`);
+            console.log("Upload response:", result);
+          } catch (error: any) {
+            toast.error(`Upload failed for ${file.name}: ${error}`);
           }
-          
-          // Add user story to ChromaDB
-          await chromaClient.addDocuments(
-            defaultCollection,
-            [story],
-            [{ type: "user_story", createdAt: new Date().toISOString() }]
-          );
-        } catch (error) {
-          console.error("Error storing user story:", error);
-          toast.error("Error storing user story");
         }
       } else if (inputMode === "url") {
-        // Add mockup screenshots for URL mode
-        setCapturedScreenshots(prev => [...prev, "Screenshot 1: Homepage"]);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setCapturedScreenshots(prev => [...prev, "Screenshot 2: Login Form"]);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setCapturedScreenshots(prev => [...prev, "Screenshot 3: Dashboard"]);
-        
         try {
-          // Ensure collection exists
-          try {
-            await chromaClient.createCollection(defaultCollection);
-          } catch (error) {
-            // Collection might already exist, continue
-            console.log("Collection may already exist, continuing...");
-          }
-          
-          // Add URL data to ChromaDB
-          await chromaClient.addDocuments(
-            defaultCollection,
-            [url, `Captured URL: ${url}`],
-            [
-              { type: "url", capturedAt: new Date().toISOString() },
-              { type: "url_metadata", screenshots: capturedScreenshots }
-            ]
-          );
+          const result = await submitUrl(url); // ✅ send URL to backend
+          toast.success(`Submitted URL: ${url}`);
+          console.log("URL submission response:", result);
+        } catch (error: any) {
+          toast.error(`Failed to submit URL: ${error}`);
+        }
+      } else if (inputMode === "story") {
+        try {
+          await chromaClient.createCollection("test_automation").catch(() => {});
+          await chromaClient.addDocuments("test_automation", [story], [
+            { type: "user_story", createdAt: new Date().toISOString() },
+          ]);
+          toast.success("User story saved.");
         } catch (error) {
-          console.error("Error storing URL data:", error);
-          toast.error("Error storing URL data");
+          toast.error("Error saving user story.");
         }
       }
-      
-      // Set progress to 100% and show success message
+
       clearInterval(progressInterval);
       setProgress(100);
-      
       setTimeout(() => {
         setIsLoading(false);
-        if (inputMode === "files") {
-          toast.success(`Successfully ingested ${files.length} files into document storage`);
-        } else if (inputMode === "story") {
-          toast.success("Successfully processed your user story");
-        } else {
-          toast.success(`Successfully captured web application at ${url}`);
-        }
         onComplete();
       }, 500);
     } catch (error) {
-      console.error("Error during data ingestion:", error);
-      toast.error("Error occurred during data ingestion");
+      console.error("Submit error:", error);
+      toast.error("Error during submission.");
       setIsLoading(false);
     }
   };
@@ -269,21 +188,12 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
         ) : inputMode === "story" ? (
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Enter user story or requirements</h3>
-            <Textarea 
+            <Textarea
               value={story}
               onChange={handleStoryChange}
               placeholder="As a user, I want to be able to... so that I can..."
               className="min-h-[200px]"
             />
-            <div className="text-muted-foreground text-sm">
-              <p className="mb-2">Tips for writing effective user stories:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Use the format: "As a [role], I want [feature] so that [benefit]"</li>
-                <li>Include acceptance criteria when possible</li>
-                <li>Be specific about user interactions and expected outcomes</li>
-                <li>Describe the business value of the feature</li>
-              </ul>
-            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -292,71 +202,18 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
               <label htmlFor="url-input" className="text-sm font-medium">
                 Web Application URL
               </label>
-              <div className="relative">
-                <input
-                  id="url-input"
-                  type="text"
-                  value={url}
-                  onChange={handleUrlChange}
-                  placeholder="https://example.com"
-                  className={`w-full px-4 py-2 border rounded-md bg-background ${
-                    !isValid ? "border-destructive focus:ring-destructive" : ""
-                  }`}
-                  disabled={isLoading}
-                />
-                {url && isValid && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-success">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 6L9 17l-5-5"/>
-                    </svg>
-                  </div>
-                )}
-              </div>
-              {!isValid && (
-                <p className="text-xs text-destructive">{validationMessage}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Options</h3>
-              <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="capture-screenshots"
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
-                    defaultChecked
-                    disabled={isLoading}
-                  />
-                  <label htmlFor="capture-screenshots" className="text-sm">
-                    Capture screenshots
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="extract-dom"
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
-                    defaultChecked
-                    disabled={isLoading}
-                  />
-                  <label htmlFor="extract-dom" className="text-sm">
-                    Extract DOM structure
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="discover-routes"
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
-                    defaultChecked
-                    disabled={isLoading}
-                  />
-                  <label htmlFor="discover-routes" className="text-sm">
-                    Discover routes
-                  </label>
-                </div>
-              </div>
+              <input
+                id="url-input"
+                type="text"
+                value={url}
+                onChange={handleUrlChange}
+                placeholder="https://example.com"
+                className={`w-full px-4 py-2 border rounded-md bg-background ${
+                  !isValid ? "border-destructive focus:ring-destructive" : ""
+                }`}
+                disabled={isLoading}
+              />
+              {!isValid && <p className="text-xs text-destructive">{validationMessage}</p>}
             </div>
           </div>
         )}
@@ -367,11 +224,11 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
-                {inputMode === "files" 
-                  ? "Processing files..." 
-                  : inputMode === "story" 
-                    ? "Processing user story..." 
-                    : "Scanning application..."}
+                {inputMode === "files"
+                  ? "Uploading files..."
+                  : inputMode === "story"
+                  ? "Saving user story..."
+                  : "Submitting URL..."}
               </span>
               <span className="text-sm text-muted-foreground">{progress}%</span>
             </div>
@@ -381,49 +238,42 @@ export default function Phase1DataIngestion({ onComplete }: Phase1Props) {
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {inputMode === "files" 
-                ? "Analyzing and storing documents..." 
-                : inputMode === "story" 
-                  ? "Processing and embedding user story..." 
-                  : "Capturing and analyzing web application..."}
-            </p>
           </div>
-
-          {inputMode === "url" && capturedScreenshots.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Captured Content</h3>
-              <div className="space-y-2">
-                {capturedScreenshots.map((screenshot, index) => (
-                  <div key={index} className="p-2 bg-secondary rounded flex items-center space-x-2 animate-fade-in">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                      <polyline points="21 15 16 10 5 21"></polyline>
-                    </svg>
-                    <span className="text-xs">{screenshot}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       <div className="flex justify-end">
         <button
           onClick={handleSubmit}
-          disabled={isLoading || 
-            (inputMode === "files" && files.length === 0) || 
+          disabled={
+            isLoading ||
+            (inputMode === "files" && files.length === 0) ||
             (inputMode === "story" && !story.trim()) ||
-            (inputMode === "url" && (!url || !isValid))}
+            (inputMode === "url" && (!url || !isValid))
+          }
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <div className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
               Processing...
             </div>
