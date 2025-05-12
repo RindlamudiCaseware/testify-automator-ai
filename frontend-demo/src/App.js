@@ -1,14 +1,17 @@
-import logo from './logo.svg';
-import './App.css';
-import FastApi from './fastapi';
-import TestCaseGenerator from './fastapi';
+// App.js
+import React from "react";
+import { Routes, Route } from "react-router-dom";
 
-function App() {
+import Module from "./module";
+import TestCases from "./test-cases";
+
+const App = () => {
   return (
-    <>
-      <TestCaseGenerator/>
-    </>
+    <Routes>
+      <Route path="/" element={<Module />} />
+      <Route path="/test-cases" element={<TestCases />} />
+    </Routes>
   );
-}
+};
 
 export default App;
