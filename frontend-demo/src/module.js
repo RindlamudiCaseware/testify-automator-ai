@@ -222,7 +222,7 @@ const Module = () => {
                                                 <h6> Upload your Test Data </h6>
                                             </div>
                                             <div style={{ color: "#999", fontSize: "14px", marginBottom: "10px" }}>
-                                                 Drag & drop your files here or click to browse
+                                                Drag & drop your files here or click to browse
                                             </div>
                                             <div style={{ color: "#999", fontSize: "14px", marginBottom: "10px" }}>
                                                 Maximum 20 files, up to 20MB each 
@@ -238,7 +238,6 @@ const Module = () => {
                                                         toast.error(`Maximum ${MAX_FILES} files allowed.`);
                                                         return;
                                                     }
-
                                                     setSelectedFiles((prev) => [...prev, ...files]);
                                                 }}
                                                 style={{ display: "none" }}
