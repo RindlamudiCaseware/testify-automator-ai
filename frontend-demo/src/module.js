@@ -56,15 +56,21 @@ const Module = () => {
 
         if (inputType === "file") {
         if (selectedFiles.length > 0) {
+            console.log(selectedFiles.length())
             Array.from(selectedFiles).forEach((file) => {
             formData.append("file", file);
             });
             apiUrl = "/api/generate-from-images"; // Image upload endpoint
         }
-        } else if (inputType === "userStory") {
+        } 
+        else if (inputType === "userStory") {
+            console.log(userStory )
         formData.append("userStory", userStory);
         apiUrl = "/api/submit-story"; // User story endpoint
-        } else if (inputType === "url") {
+        } 
+
+        else if (inputType === "url") {
+        console.log(url)
         formData.append("url", url);
         apiUrl = "/api/generate-from-url"; // URL submission endpoint
         }
@@ -221,10 +227,10 @@ const Module = () => {
                                             <div style={{ color: "#8b6ffe", fontWeight: "bold", fontSize: "30px" }}>
                                                 <h6> Upload your Test Data </h6>
                                             </div>
-                                            <div style={{ color: "#999", fontSize: "14px", marginBottom: "10px" }}>
+                                            <div style={{ color: "#999", fontSize: "14px", marginBottom: "5px" }}>
                                                 Drag & drop your files here or click to browse
                                             </div>
-                                            <div style={{ color: "#999", fontSize: "14px", marginBottom: "10px" }}>
+                                            <div style={{ color: "#999", fontSize: "14px", marginBottom: "5px" }}>
                                                 Maximum 20 files, up to 20MB each 
                                             </div>
                                             <input

@@ -6,9 +6,11 @@ const TestCases = () => {
     const data = location.state?.data;
 
     return (
-        <div className="container mt-5">
-            <h2>Received Data</h2>
-            <pre>{JSON.stringify(data, null, 2)}</pre>
+        <div className="container mt-5"> 
+            <h2>AI-Based Test Case Generation</h2> 
+            <p> Our AI analyzes your ChromaDB data and generates comprehensive test cases. </p> 
+            <h3> Generated TestCases </h3> 
+            <pre>{JSON.stringify(data, null, 2)}</pre> 
         </div>
     );
 };
