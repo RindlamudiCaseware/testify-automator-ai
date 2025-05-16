@@ -82,6 +82,14 @@ const Module = () => {
         }
     };
 
+    const [urlInput, setUrlInput] = useState('');
+    const [testCases, setTestCases] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const fetchTestCases  = () =>{
+        
+    }
+
     return (
         <div className="container-fluid p-0" style={{ backgroundColor: "#f8f9fc", minHeight: "100vh" }}>
             <ToastContainer />
@@ -146,18 +154,18 @@ const Module = () => {
                                         onClick={() => document.getElementById("file-upload").click()}
                                     >
                                         <div style={{ color: "#7857FF", fontWeight: "bold", fontSize: "30px" }}>
-                                            <i className="bi bi-upload"></i>
+                                            <i className="bi bi-upload"></i> 
                                         </div>
                                         <h6 style={{ color: "#8b6ffe", fontWeight: "bold" }}>Upload your Test Data</h6>
-                                        <p style={{ color: "#999", fontSize: "14px" }}>
+                                        <p style={{ color: "#999", fontSize: "14px" }}> 
                                             Drag & drop your files here or click to browse
                                         </p>
                                         <p style={{ color: "#999", fontSize: "14px" }}>
                                             Maximum 20 files, up to 20MB each
                                         </p>
                                         <input
-                                            id="file-upload"
-                                            type="file"
+                                            id="file-upload" 
+                                            type="file" 
                                             multiple
                                             onChange={(e) => {
                                                 const files = Array.from(e.target.files);
@@ -176,7 +184,6 @@ const Module = () => {
                                             {selectedFiles.map((file, index) => {
                                                 const isImage = file.type.startsWith("image/");
                                                 const url = isImage ? URL.createObjectURL(file) : null;
-
                                                 return (
                                                     <div key={index} className="col-3 mb-3 position-relative">
                                                         <div className="card shadow-sm">
@@ -274,7 +281,8 @@ const Module = () => {
                             )}
                         </div>
 
-                        <div style={{ textAlign: "end", marginTop: "20px" }}>
+                        <div style={{display:"flex"}}>
+                            <div style={{ textAlign: "end", marginTop: "20px" }}>
                             <button
                                 onClick={handleContinue}
                                 style={{
@@ -288,6 +296,23 @@ const Module = () => {
                             >
                                 Continue
                             </button>
+                        </div>
+                        <div style={{ textAlign: "end" , marginTop:"20px"}}>
+                            <button
+                                onClick={fetchTestCases}
+                                style={{
+                                    marginLeft:"10px",
+                                    backgroundColor: "green",
+                                    height: "42px",
+                                    width: "200px",
+                                    border: "none",
+                                    borderRadius: "10px",
+                                    color: "white",
+                                }}
+                            >
+                                Generate Test Cases
+                            </button>
+                        </div>
                         </div>
                     </div>
                 </div>
