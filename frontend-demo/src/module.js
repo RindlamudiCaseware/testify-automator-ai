@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import "react-toastify/dist/ReactToastify.css";
 
 const Module = () => {
     const [selectedFiles, setSelectedFiles] = useState([]);
@@ -11,7 +12,6 @@ const Module = () => {
     const [inputType, setInputType] = useState("file");
 
     const navigate = useNavigate();
-
     const MAX_FILES = 20;
 
     const handleFileUpload = (e) => {
@@ -110,7 +110,7 @@ const Module = () => {
             <div className="row m-0">
                 <div className="col-12" style={{ backgroundColor: "#efedfc", height: "80px" }}>
                     <div className="d-flex justify-content-between align-items-center h-100 px-4">
-                        <h3 style={{ color: "#8b6ffe", fontFamily: "Segoe UI", fontWeight: "bold", fontSize: "30px", margin: 0 }}>Testify</h3>
+                        <h3 style={{ color: "#7857FF", fontFamily: "Segoe UI", fontWeight: "bold", fontSize: "30px", margin: 0 }}>Testify</h3>
                         <div className="d-flex gap-3">
                             <p className="mb-0">Docs</p>
                             <p className="mb-0">Support</p>
@@ -119,7 +119,7 @@ const Module = () => {
                 </div>
 
                 <div className="col-xl-12 m-5 mt-2">
-                    <h1 style={{ color: "#8b6ffe", fontFamily: "Segoe UI", fontWeight: "bold", fontSize: "28px", marginTop: "30px" }}>
+                    <h1 style={{ color: "#7857FF", fontFamily: "Segoe UI", fontWeight: "bold", fontSize: "28px", marginTop: "30px" }}>
                         AI-Powered Test Automation
                     </h1>
                     <p style={{ fontFamily: "Segoe UI", fontSize: "16px" }}>
@@ -143,141 +143,138 @@ const Module = () => {
                         <hr />
 
                         <div style={{ border: "2px solid #f6f6f8", borderRadius: "5px", marginTop: "2px", minHeight: "20vh", padding: "20px" }}>
-                            <div>
-                                {inputType === "file" && (
-                                    <>
-                                        <div
-                                            className="p-4 text-center"
-                                            style={{
-                                                border: "2px dashed #d6d8e1",
-                                                borderRadius: "5px",
-                                                backgroundColor: "#fafbfe",
-                                                position: "relative",
-                                                cursor: "pointer",
-                                            }}
-                                            onDragOver={(e) => e.preventDefault()}
-                                            onDrop={(e) => {
-                                                e.preventDefault();
-                                                const droppedFiles = Array.from(e.dataTransfer.files);
+                            {inputType === "file" && (
+                                <>
+                                    <div className="p-4 text-center"
+                                        style={{
+                                            border: "2px dashed #d6d8e1",
+                                            borderRadius: "5px",
+                                            backgroundColor: "#fafbfe",
+                                            position: "relative",
+                                            cursor: "pointer",
+                                        }}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            const droppedFiles = Array.from(e.dataTransfer.files);
 
-                                                if (selectedFiles.length + droppedFiles.length > MAX_FILES) {
+                                            if (selectedFiles.length + droppedFiles.length > MAX_FILES) {
+                                                toast.error(`Maximum ${MAX_FILES} files allowed.`);
+                                                return;
+                                            }
+
+                                            setSelectedFiles((prev) => [...prev, ...droppedFiles]);
+                                        }}
+                                        onClick={() => document.getElementById("file-upload").click()}
+                                    >
+                                        <div style={{ color: "#7857FF", fontWeight: "bold", fontSize: "30px" }}>
+                                            <i className="bi bi-upload"></i>
+                                        </div>
+                                        <h6 style={{ color: "#8b6ffe", fontWeight: "bold" }}>Upload your Test Data</h6>
+                                        <p style={{ color: "#999", fontSize: "14px" }}>
+                                            Drag & drop your files here or click to browse
+                                        </p>
+                                        <p style={{ color: "#999", fontSize: "14px" }}>
+                                            Maximum 20 files, up to 20MB each
+                                        </p>
+                                        <input
+                                            id="file-upload"
+                                            type="file"
+                                            multiple
+                                            onChange={(e) => {
+                                                const files = Array.from(e.target.files);
+                                                if (selectedFiles.length + files.length > MAX_FILES) {
                                                     toast.error(`Maximum ${MAX_FILES} files allowed.`);
                                                     return;
                                                 }
-
-                                                setSelectedFiles((prev) => [...prev, ...droppedFiles]);
+                                                setSelectedFiles((prev) => [...prev, ...files]);
                                             }}
-                                            onClick={() => document.getElementById("file-upload").click()}
-                                        >
-                                            <div style={{ color: "#8b6ffe", fontWeight: "bold", fontSize: "30px" }}>
-                                                <i className="bi bi-upload"></i>
-                                            </div>
-                                            <h6 style={{ color: "#8b6ffe", fontWeight: "bold" }}>Upload your Test Data</h6>
-                                            <p style={{ color: "#999", fontSize: "14px" }}>
-                                                Drag & drop your files here or click to browse
-                                            </p>
-                                            <p style={{ color: "#999", fontSize: "14px" }}>
-                                                Maximum 20 files, up to 20MB each
-                                            </p>
-                                            <input
-                                                id="file-upload"
-                                                type="file"
-                                                multiple
-                                                onChange={(e) => {
-                                                    const files = Array.from(e.target.files);
-                                                    if (selectedFiles.length + files.length > MAX_FILES) {
-                                                        toast.error(`Maximum ${MAX_FILES} files allowed.`);
-                                                        return;
-                                                    }
-                                                    setSelectedFiles((prev) => [...prev, ...files]);
-                                                }}
-                                                style={{ display: "none" }}
-                                            />
-                                        </div>
+                                            style={{ display: "none" }}
+                                        />
+                                    </div>
 
-                                        {/* File Preview */}
-                                        {selectedFiles.length > 0 && (
-                                            <div className="row mt-4">
-                                                {selectedFiles.map((file, index) => {
-                                                    const isImage = file.type.startsWith("image/");
-                                                    const url = isImage ? URL.createObjectURL(file) : null;
+                                    {selectedFiles.length > 0 && (
+                                        <div className="row mt-4">
+                                            {selectedFiles.map((file, index) => {
+                                                const isImage = file.type.startsWith("image/");
+                                                const url = isImage ? URL.createObjectURL(file) : null;
 
-                                                    return (
-                                                        <div key={index} className="col-3 mb-3 position-relative">
-                                                            <div className="card shadow-sm">
-                                                                {isImage ? (
-                                                                    <img
-                                                                        src={url}
-                                                                        alt={file.name}
-                                                                        className="card-img-top"
-                                                                        style={{
-                                                                            height: "150px",
-                                                                            objectFit: "cover",
-                                                                            borderTopLeftRadius: "0.5rem",
-                                                                            borderTopRightRadius: "0.5rem",
-                                                                        }}
-                                                                    />
-                                                                ) : (
-                                                                    <div
-                                                                        className="d-flex align-items-center justify-content-center"
-                                                                        style={{
-                                                                            height: "150px",
-                                                                            backgroundColor: "#f2f2f2",
-                                                                            borderTopLeftRadius: "0.5rem",
-                                                                            borderTopRightRadius: "0.5rem",
-                                                                            fontSize: "24px",
-                                                                            color: "#888",
-                                                                        }}
-                                                                    >
-                                                                        <i className="bi bi-file-earmark"></i>
-                                                                    </div>
-                                                                )}
-                                                                <button
-                                                                    type="button"
-                                                                    className="btn btn-sm btn-light position-absolute"
-                                                                    style={{ top: "5px", right: "5px", borderRadius: "50%" }}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setSelectedFiles((prev) =>
-                                                                            prev.filter((_, i) => i !== index)
-                                                                        );
+                                                return (
+                                                    <div key={index} className="col-3 mb-3 position-relative">
+                                                        <div className="card shadow-sm">
+                                                            {isImage ? (
+                                                                <img
+                                                                    src={url}
+                                                                    alt={file.name}
+                                                                    className="card-img-top"
+                                                                    style={{
+                                                                        height: "150px",
+                                                                        objectFit: "cover",
+                                                                        borderTopLeftRadius: "0.5rem",
+                                                                        borderTopRightRadius: "0.5rem",
                                                                     }}
-                                                                    title="Remove"
+                                                                />
+                                                            ) : (
+                                                                <div
+                                                                    className="d-flex align-items-center justify-content-center"
+                                                                    style={{
+                                                                        height: "150px",
+                                                                        backgroundColor: "#f2f2f2",
+                                                                        borderTopLeftRadius: "0.5rem",
+                                                                        borderTopRightRadius: "0.5rem",
+                                                                        fontSize: "24px",
+                                                                        color: "#888",
+                                                                    }}
                                                                 >
-                                                                    ✕
-                                                                </button>
-                                                                <div className="card-body p-2">
-                                                                    <p className="card-text text-truncate" title={file.name} style={{ fontSize: "14px" }}>
-                                                                        {file.name}
-                                                                    </p>
+                                                                    <i className="bi bi-file-earmark"></i>
                                                                 </div>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-light position-absolute"
+                                                                style={{ top: "5px", right: "5px", borderRadius: "50%" }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedFiles((prev) =>
+                                                                        prev.filter((_, i) => i !== index)
+                                                                    );
+                                                                }}
+                                                                title="Remove"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                            <div className="card-body p-2">
+                                                                <p className="card-text text-truncate" title={file.name} style={{ fontSize: "14px" }}>
+                                                                    {file.name}
+                                                                </p>
                                                             </div>
                                                         </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </>
+                            )}
 
-                                {inputType === "userStory" && (
-                                    <>
-                                        <h5 style={{ marginTop: "10px" }}>Enter user story or requirements</h5>
-                                        <textarea
-                                            placeholder="Enter User Story"
-                                            onChange={handleUserStoryChange}
-                                            value={userStory}
-                                            className="form-control"
-                                            style={{
-                                                border: "2px solid #f6f6f8",
-                                                borderRadius: "5px",
-                                                minHeight: "100px",
-                                                marginTop: "10px",
-                                                backgroundColor: "#f8f9fc",
-                                            }}
-                                        ></textarea>
-                                    </>
-                                )}
+                            {inputType === "userStory" && (
+                                <>
+                                    <h5 style={{ marginTop: "10px" }}>Enter user story or requirements</h5>
+                                    <textarea
+                                        placeholder="Enter User Story"
+                                        onChange={handleUserStoryChange}
+                                        value={userStory}
+                                        className="form-control"
+                                        style={{
+                                            border: "2px solid #f6f6f8",
+                                            borderRadius: "5px",
+                                            minHeight: "100px",
+                                            marginTop: "10px",
+                                            backgroundColor: "#f8f9fc",
+                                        }}
+                                    ></textarea>
+                                </>
+                            )}
 
                                 {inputType === "url" && (
                                     <>
@@ -305,7 +302,7 @@ const Module = () => {
                             <button
                                 onClick={handleContinue}
                                 style={{
-                                    backgroundColor: "#8b6ffe",
+                                    backgroundColor: "#7857FF",
                                     height: "42px",
                                     width: "120px",
                                     border: "none",
