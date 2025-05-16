@@ -1,6 +1,7 @@
 import os
 from PIL import Image
 from datetime import datetime
+from datetime import datetime
 
 def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: str, page_name: str = "page") -> str:
     # Crop the region
@@ -16,3 +17,53 @@ def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: 
     # Save image
     cropped.save(region_path)
     return region_path
+
+
+from datetime import datetime
+
+def build_standard_metadata(element: dict, page_name: str, image_path: str = "", source_url: str = "") -> dict:
+    return sanitize_metadata({
+        "id": element.get("id") or element.get("ocr_id") or element.get("element_id", ""),
+        "ocr_id": element.get("ocr_id") or element.get("id") or element.get("element_id", ""),
+        "page_name": page_name,
+        "text": element.get("text") or element.get("label_text", ""),
+        "label_text": element.get("label_text") or element.get("text", ""),
+        "x": element.get("x", element.get("boundingBox", {}).get("x", 0)),
+        "y": element.get("y", element.get("boundingBox", {}).get("y", 0)),
+        "width": element.get("width", element.get("boundingBox", {}).get("width", 0)),
+        "height": element.get("height", element.get("boundingBox", {}).get("height", 0)),
+        "confidence_score": element.get("confidence_score", 1.0),
+        "visibility_score": element.get("visibility_score", 1.0),
+        "locator_stability_score": element.get("locator_stability_score", 1.0),
+        "used_in_tests": element.get("used_in_tests", []),
+        "last_tested": element.get("last_tested", ""),
+        "healing_success_rate": element.get("healing_success_rate", 0.0),
+        "snapshot_id": element.get("snapshot_id", ""),
+        "match_timestamp": element.get("match_timestamp", ""),
+        "region_image_path": image_path,
+        "source_url": source_url,
+        "bbox": element.get("bbox", f"{element.get('x', 0)},{element.get('y', 0)},{element.get('width', 0)},{element.get('height', 0)}"),
+        "position_relation": element.get("position_relation", {}),
+
+        # Optional DOM-related fields — default if missing
+        "tag_name": element.get("tag_name", ""),
+        "xpath": element.get("xpath", ""),
+        "get_by_text": element.get("get_by_text", ""),
+        "get_by_role": element.get("get_by_role", ""),
+        "intent": element.get("intent", ""),
+        "html_snippet": element.get("html_snippet", ""),
+        "dom_matched": element.get("dom_matched", False),
+    })
+
+
+def sanitize_metadata(metadata: dict) -> dict:
+    """Ensure all values are primitive types acceptable by ChromaDB."""
+    def safe_convert(value):
+        if isinstance(value, (str, int, float, bool)):
+            return value
+        if value is None:
+            return ""
+        if isinstance(value, (dict, list)):
+            return str(value)
+        return str(value)
+    return {k: safe_convert(v) for k, v in metadata.items()}
