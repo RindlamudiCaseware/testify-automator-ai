@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from apis.image_text_api import router as image_router
 from apis.url_locator_api import router as url_router
 from apis.chroma_debug_api import router as chroma_debug_router
+from apis.enrichment_api import router as enrichment_router
+from apis.rag_testcase_runner import router as rag_router
 import sys
 import asyncio
 import os
@@ -22,10 +24,15 @@ if sys.platform == "win32":
 
 app = FastAPI(title="AI Test Extractor")
 
+origins = [
+    "http://localhost:3000",
+    "https://www.saucedemo.com",   # React dev server
+    # add any other frontend URLs if deployed
+]
 # ✅ Enable CORS for frontend at http://localhost:8080
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],  # 👈 allow ONLY frontend on port 8080
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,7 +51,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(image_router)
 app.include_router(url_router)
 app.include_router(chroma_debug_router)
-
+app.include_router(enrichment_router)
+app.include_router(rag_router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=False)

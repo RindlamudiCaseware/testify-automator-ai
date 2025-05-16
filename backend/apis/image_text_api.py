@@ -6,20 +6,24 @@ import os
 from PIL import Image
 from logic.image_text_extractor import process_image
 from config.settings import DATA_PATH
-
+from utils.file_utils import sanitize_metadata, build_standard_metadata
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from utils.match_utils import normalize_page_name
 
 # Initialize ChromaDB client
 embedding_function = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+# 👇 CHANGE THIS LINE in upload-image router
+chroma_client = chromadb.PersistentClient(path="./data/chroma_db")  # not ./chroma_db
+
 chroma_collection = chroma_client.get_or_create_collection(
-    name="ocr_images",
+    name="element_metadata",
     embedding_function=embedding_function
 )
 
 router = APIRouter()
 
+# upload_image.py
 @router.post("/upload-image")
 async def upload_image(file: UploadFile = File(...)):
     try:
@@ -39,36 +43,33 @@ async def upload_image(file: UploadFile = File(...)):
                             image_path = os.path.join(extract_dir, image_name)
                             try:
                                 with Image.open(image_path) as img:
+                                    page_name = normalize_page_name(image_name)
+                                    print(f"page_name : {page_name}")
                                     process_results = await process_image(img.copy(), filename=image_name, base_folder=extract_dir)
-
                                     for entry in process_results:
-                                        # ✅ Inject type: ocr
-                                        entry["type"] = "ocr"
-                                        entry["region_image_path"] = image_path
-                                        # Insert into ChromaDB
+                                        metadata = build_standard_metadata(entry, page_name, image_path=image_path)
                                         chroma_collection.add(
-                                            ids=[entry["ocr_id"]],
-                                            documents=[entry["text"]],
-                                            metadatas=[entry]
+                                            ids=[metadata["id"]],
+                                            documents=[metadata["text"]],
+                                            metadatas=[metadata]
                                         )
-                                        results.append(entry)
-
+                                        results.append(metadata)
                             except Exception as img_err:
                                 print(f"⚠️ Skipping {image_name}: {img_err}")
 
         elif filename.endswith((".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp")):
             with Image.open(file.file) as img:
+                page_name = normalize_page_name(file.filename)
                 process_results = await process_image(img.copy(), filename=file.filename)
 
                 for entry in process_results:
-                    entry["type"] = "ocr"
-                    entry["region_image_path"] = file.filename
+                    metadata = build_standard_metadata(entry, page_name, image_path=file.filename)
                     chroma_collection.add(
-                        ids=[entry["ocr_id"]],
-                        documents=[entry["text"]],
-                        metadatas=[entry]
+                        ids=[metadata["id"]],
+                        documents=[metadata["text"]],
+                        metadatas=[metadata]
                     )
-                    results.append(entry)
+                    results.append(metadata)
         else:
             raise HTTPException(status_code=400, detail="Unsupported file format. Upload image or ZIP of images.")
 

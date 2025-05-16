@@ -15,12 +15,14 @@ const FastApi = () => {
   const handleRunImages = async () => {
     if (!images.length) return alert("Please select image files.");
     setLoading(true);
-
+  
     const formData = new FormData();
-    Array.from(images).forEach((img) => formData.append("images", img));
-
+    formData.append("file", images[0]); // ✅ only first file sent under `file`
+  
     try {
-      const res = await axios.post("/api/generate-from-images", formData);
+      const res = await axios.post("http://127.0.0.1:8001/upload-image", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
       setResults(res.data);
     } catch (err) {
       console.error("Error from image API", err);
@@ -28,13 +30,14 @@ const FastApi = () => {
       setLoading(false);
     }
   };
+  
 
   const handleRunUrl = async () => {
     if (!url) return alert("Please enter a URL.");
     setLoading(true);
 
     try {
-      const res = await axios.post("/api/generate-from-url", { url });
+      const res = await axios.post("http://127.0.0.1:8001/submit-url", { url });
       setResults(res.data);
     } catch (err) {
       console.error("Error from URL API", err);

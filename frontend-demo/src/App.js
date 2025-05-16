@@ -1,15 +1,15 @@
 // App.js
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route ,Router} from "react-router-dom";
 
 import Module from "./module";
-import TestCases from "./test-cases";
+import Locaters from "./locaters";
 
 const App = () => {
   return (
     <Routes>
       <Route path="/" element={<Module />} />
-      <Route path="/test-cases" element={<TestCases />} />
+      <Route path="/locaters" element={<Locaters />} />
     </Routes>
   );
 };

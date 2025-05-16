@@ -1,8 +1,10 @@
+# logic/url_locator_extractor.py
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 from urllib.parse import urlparse
 from datetime import datetime
 import uuid
+from utils.match_utils import normalize_page_name
 
 def sanitize_metadata(record: dict) -> dict:
     sanitized = {}
@@ -15,18 +17,13 @@ def sanitize_metadata(record: dict) -> dict:
             sanitized[k] = v
     return sanitized
 
-async def process_url_and_update_chroma(url: str, chroma_collection=None, embedding_function=None) -> list[dict]:
+async def process_url_and_update_chroma(url: str, chroma_collection=None, embedding_function=None, page_name: str = None) -> list[dict]:
     element_metadata = []
-
-    parsed_url = urlparse(url)
-    domain_prefix = parsed_url.hostname.split('.')[0]
-    page_base = parsed_url.path.strip("/").replace("/", "_").replace(".html", "") or "home"
-    page_name = f"{domain_prefix}_{page_base}" if page_base != "home" else f"{domain_prefix}_login"
-
+    page_name = page_name or normalize_page_name(url)
     snapshot_id = f"{page_name}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
-    print(f"📝 [DEBUG] Processing URL: {url}")
-    print(f"📝 [DEBUG] Extracted page_name: {page_name}")
+    print(f"✍️ [DEBUG] Processing URL: {url}")
+    print(f"✍️ [DEBUG] Extracted page_name: {page_name}")
 
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -44,7 +41,6 @@ async def process_url_and_update_chroma(url: str, chroma_collection=None, embedd
 
         for tag in soup.find_all(["button", "input", "a", "label"]):
             tag_name = tag.name
-
             label_text = (
                 tag.get("aria-label") or
                 tag.get("placeholder") or
@@ -101,7 +97,6 @@ async def process_url_and_update_chroma(url: str, chroma_collection=None, embedd
                 embedding = None
                 if embedding_function:
                     try:
-                        # ✅ key change: use label_text as embedding input
                         text_to_embed = label_text.strip() or tag.get("aria-label") or tag.get("placeholder") or tag.get("alt") or tag.get("name") or tag.get_text(strip=True) or document_content
                         embedding = embedding_function([text_to_embed])[0]
                     except Exception as emb_err:
@@ -112,11 +107,10 @@ async def process_url_and_update_chroma(url: str, chroma_collection=None, embedd
                     embedding_vector = embedding.tolist() if embedding is not None else None
                     chroma_collection.upsert(
                         ids=[element_id],
-                        documents=[text_to_embed],  # ✅ also store what was embedded
+                        documents=[text_to_embed],
                         metadatas=[sanitized_record],
                         embeddings=[embedding_vector] if embedding_vector else None
                     )
-
                     print(f"✅ [CHROMA] Upserted locator {element_id} into ChromaDB.")
                 except Exception as insert_err:
                     print(f"❌ [CHROMA] Failed to upsert {element_id}: {insert_err}")
