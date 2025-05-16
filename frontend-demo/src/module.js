@@ -7,6 +7,7 @@ const Module = () => {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [userStory, setUserStory] = useState("");
     const [url, setUrl] = useState("");
+    const [page_name , setPageno] = useState("");
     const [inputType, setInputType] = useState("file");
 
     const navigate = useNavigate();
@@ -26,64 +27,82 @@ const Module = () => {
         setUrl(e.target.value);
     };
 
+    const handlePageNo = (e) =>{
+        setPageno(e.target.value);
+    }
+
     const handleContinue = async () => {
-        if (inputType === "file" && selectedFiles.length === 0) {
+        let apiUrl = "";
+        let data;
+        let config = {
+          headers: {
+            "Content-Type": "application/json"
+          }
+        };
+      
+        if (inputType === "file") {
+          if (selectedFiles.length === 0) {
             toast("Please upload at least one file.");
             return;
-        }
-
-        if (inputType === "userStory" && userStory.trim() === "") {
+          }
+      
+          const formData = new FormData();
+          selectedFiles.forEach((file) => {
+            formData.append("file", file);
+          });
+      
+          apiUrl = "http://localhost:8001/upload-image";
+          data = formData;
+          config.headers = { "Content-Type": "multipart/form-data" };
+      
+        } else if (inputType === "userStory") {
+          if (userStory.trim() === "") {
             toast("Please enter a user story.");
             return;
-        }
-
-        if (inputType === "url") {
-            if (url.trim() === "") {
-                toast("Please enter a correct URL.");
-                return;
-            }
-            try {
-                new URL(url);
-            } catch (_) {
-                toast("Please enter a valid URL (e.g., https://example.com)");
-                return;
-            }
-        }
-
-        let apiUrl = "";
-        const formData = new FormData();
-
-        if (inputType === "file") {
-            if (selectedFiles.length > 0) {
-                selectedFiles.forEach((file) => {
-                    formData.append("file", file);
-                });
-                apiUrl = "/api/generate-from-images";
-            }
-        } else if (inputType === "userStory") {
-            formData.append("userStory", userStory);
-            apiUrl = "/api/submit-story";
+          }
+      
+          apiUrl = "http://localhost:8001/submit-story";
+          data = JSON.stringify({ userStory });
+      
         } else if (inputType === "url") {
-            formData.append("url", url);
-            apiUrl = "/api/generate-from-url";
-        }
-
-        try {
-            const response = await axios.post(apiUrl, formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            });
-
-            if (response.status === 200) {
-                toast.success("Data sent successfully.");
-                navigate("/test-cases");
+            if (url.trim() === "") {
+              toast("Please enter a correct URL.");
+              return;
             }
+          
+            try {
+              new URL(url);
+            } catch (_) {
+              toast("Please enter a valid URL (e.g., https://example.com)");
+              return;
+            }
+          
+            apiUrl = "http://localhost:8001/launch-browser";
+            data = JSON.stringify({ url, page_name }); // ✅ include both fields
+          }
+      
+        try {
+          const response = await axios.post(apiUrl, data, config);
+          
+          if (response.status === 200) {
+            toast.success("Data sent successfully.");
+            navigate("/locaters", {
+              state: {
+                type: inputType,
+                response: response.data,
+                userStory,
+                url,
+              },
+            });
+          }
         } catch (error) {
-            console.error("Error sending data to the API:", error);
-            toast.error("There was an error sending the data.");
+          console.error("Error sending data to the API:", error);
+          toast.error("There was an error sending the data.");
         }
-    };
+      };
+      
+      
+      
 
     return (
         <div className="container-fluid p-0" style={{ backgroundColor: "#f8f9fc", minHeight: "100vh" }}>
@@ -276,6 +295,7 @@ const Module = () => {
                                                 backgroundColor: "#f8f9fc",
                                             }}
                                         />
+                                        <input type="text" value={page_name} onChange={handlePageNo} className="form-control mt-3"/>
                                     </>
                                 )}
                             </div>

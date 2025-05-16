@@ -17,7 +17,7 @@ embedding_function = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM
 chroma_client = chromadb.PersistentClient(path="./data/chroma_db")  # not ./chroma_db
 
 chroma_collection = chroma_client.get_or_create_collection(
-    name="ocr_images",
+    name="element_metadata",
     embedding_function=embedding_function
 )
 
@@ -44,6 +44,7 @@ async def upload_image(file: UploadFile = File(...)):
                             try:
                                 with Image.open(image_path) as img:
                                     page_name = normalize_page_name(image_name)
+                                    print(f"page_name : {page_name}")
                                     process_results = await process_image(img.copy(), filename=image_name, base_folder=extract_dir)
                                     for entry in process_results:
                                         metadata = build_standard_metadata(entry, page_name, image_path=image_path)

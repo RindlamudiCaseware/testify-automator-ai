@@ -8,3 +8,4 @@ playwright
 python-multipart
 bs4
 rapidfuzz
+openai
