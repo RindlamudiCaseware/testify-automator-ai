@@ -99,9 +99,21 @@ def run_testcase(code: str, folder: Path):
 
     print("[Run] Executing test case at:", test_path)
     result = subprocess.run([sys.executable, str(test_path)], capture_output=True, text=True)
-    log_path.write_text(result.stdout + result.stderr, encoding="utf-8")
+    output = result.stdout + result.stderr
+    log_path.write_text(output, encoding="utf-8")
 
-    return py_code, manual, result.stdout + result.stderr, result.returncode
+    # Enhanced logic to detect actual failures from logs
+    if (
+        result.returncode != 0
+        or "[FAIL]" in output
+        or "[CRASH]" in output
+        or "Locator.click: Error" in output
+    ):
+        status = "FAIL"
+    else:
+        status = "PASS"
+
+    return py_code, manual, output, status
 
 @router.post("/rag/generate-and-run")
 def auto_generate_and_run(req: TestcaseRequest):
@@ -111,12 +123,13 @@ def auto_generate_and_run(req: TestcaseRequest):
 
     test_output = generate_test_cases(dom_elements, source_url)
     folder = testcase_dir / normalize_page_name(page_name)
-    code, manual, output, status_code = run_testcase(test_output, folder)
+    code, manual, output, status = run_testcase(test_output, folder)
 
     return {
         "page_name": page_name,
-        "status": "PASS" if status_code == 0 else "FAIL",
+        "status": status,
         "manual_testcases": manual,
         "python_test_code": code,
         "test_output": output
     }
+

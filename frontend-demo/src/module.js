@@ -3,6 +3,7 @@ import { ToastContainer, toast } from "react-toastify";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
+import { useLocation } from "react-router-dom";
 
 const Module = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -11,9 +12,13 @@ const Module = () => {
   const [pageName, setPageName] = useState("");
   const [inputType, setInputType] = useState("file");
 
+  const [fullTestData, setFullTestData] = useState(null); // 👈 for storing full response
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [testCases, setTestCases] = useState([]);
+
+  const location = useLocation();
 
   const navigate = useNavigate();
   const MAX_FILES = 20;
@@ -95,31 +100,32 @@ const Module = () => {
   };
 
   const fetchTestCases = async () => {
-    if (!url) {
-      setError("Please enter a valid URL");
-      return;
-    }
+  if (!url) {
+    setError("Please enter a valid URL");
+    return;
+  }
 
-    setLoading(true);
-    setError("");
-    setTestCases([]);
+  setLoading(true);
+  setError("");
+  setTestCases([]);
+  setFullTestData(null); // clear previous
 
-    try {
-      const response = await axios.post("http://localhost:2700/generate-test-cases", { url });
-      const data = response.data;
+  try {
+    const response = await axios.post("http://localhost:8001/rag/generate-and-run", {
+      source_url: url
+    });
 
-      if (data?.testCases) {
-        setTestCases(data.testCases);
-        toast.success("Test cases fetched successfully.");
-      } else {
-        setError("No test cases found in response.");
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || "Error fetching test cases");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const data = response.data;
+    setFullTestData(data); // ✅ store full JSON
+    toast.success("Test case generation successful.");
+
+  } catch (err) {
+    setError(err.response?.data?.message || "Error fetching test cases");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="container-fluid p-0" style={{ backgroundColor: "#f8f9fc", minHeight: "100vh" }}>
@@ -257,16 +263,15 @@ const Module = () => {
             {loading && <p style={{ marginTop: "10px" }}>Loading test cases...</p>}
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
 
-            {testCases.length > 0 && (
+            {fullTestData && (
               <div style={{ marginTop: "20px" }}>
-                <h5>Generated Test Cases</h5>
-                <ul>
-                  {testCases.map((tc, index) => (
-                    <li key={index}>{tc}</li>
-                  ))}
-                </ul>
+                <h5>Full Test Case Response</h5>
+                <pre style={{ backgroundColor: "#f6f8fa", padding: "20px", borderRadius: "8px", maxHeight: "500px", overflowY: "auto" }}>
+                  {JSON.stringify(fullTestData, null, 2)}
+                </pre>
               </div>
             )}
+
           </div>
         </div>
       </div>

@@ -26,7 +26,8 @@ app = FastAPI(title="AI Test Extractor")
 
 origins = [
     "http://localhost:3000",
-    "https://www.saucedemo.com",   # React dev server
+    "https://www.saucedemo.com",
+    "http://localhost:3001"   # React dev server
     # add any other frontend URLs if deployed
 ]
 # ✅ Enable CORS for frontend at http://localhost:8080
