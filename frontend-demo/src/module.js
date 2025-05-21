@@ -265,12 +265,60 @@ const Module = () => {
 
             {fullTestData && (
               <div style={{ marginTop: "20px" }}>
-                <h5>Full Test Case Response</h5>
-                <pre style={{ backgroundColor: "#f6f8fa", padding: "20px", borderRadius: "8px", maxHeight: "500px", overflowY: "auto" }}>
-                  {JSON.stringify(fullTestData, null, 2)}
-                </pre>
+                <h5>Test Case Details</h5>
+                <div style={{ overflowX: "auto", border: "1px solid #ddd", borderRadius: "8px" }}>
+                  <table style={{ borderCollapse: "collapse", width: "100%", fontFamily: "Arial, sans-serif" }}>
+                    <thead>
+                      <tr>
+                        <th style={{
+                          textAlign: "left",
+                          padding: "12px",
+                          backgroundColor: "#f2f2f2",
+                          borderBottom: "1px solid #ddd"
+                        }}>Key</th>
+                        <th style={{
+                          textAlign: "left",
+                          padding: "12px",
+                          backgroundColor: "#f2f2f2",
+                          borderBottom: "1px solid #ddd"
+                        }}>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(fullTestData).map(([key, value]) => (
+                        <tr key={key}>
+                          <td style={{
+                            padding: "12px",
+                            borderBottom: "1px solid #ddd",
+                            fontWeight: "bold",
+                            verticalAlign: "top"
+                          }}>{key}</td>
+                          <td style={{
+                            padding: "12px",
+                            borderBottom: "1px solid #ddd",
+                            verticalAlign: "top",
+                            whiteSpace: "pre-wrap",
+                            maxWidth: "1000px"
+                          }}>
+                            {typeof value === "string" && value.length > 100 ? (
+                              <details>
+                                <summary style={{ cursor: "pointer", marginBottom: "5px" }}>Show</summary>
+                                <pre style={{ margin: 0, fontFamily: "monospace", backgroundColor: "#f6f8fa", padding: "10px", borderRadius: "4px" }}>
+                                  {value}
+                                </pre>
+                              </details>
+                            ) : (
+                              <pre style={{ margin: 0, fontFamily: "monospace" }}>{value}</pre>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
+
 
           </div>
         </div>
