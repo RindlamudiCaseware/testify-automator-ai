@@ -246,35 +246,50 @@ const Module = () => {
               )}
             </div>
 
-            <button
-              onClick={handleContinue}
-              disabled={loading}
-              style={{
-                backgroundColor: "#7857FF",
-                border: "none",
-                borderRadius: "10px",
-                color: "white",
-                padding: "10px 20px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: "100px",
-                height: "40px",
-              }}
-            >
-              {loading ? (
-                <div
-                  className="spinner-border spinner-border-sm text-light"
-                  role="status"
-                  style={{ width: "20px", height: "20px" }}
-                >
-                  <span className="visually-hidden">Loading...</span>
-                </div>
-              ) : (
-                "Continue"
-              )}
-            </button>
+            <div className="d-flex mt-4 gap-3">
+              <button
+                onClick={handleContinue}
+                disabled={loading}
+                style={{
+                  backgroundColor: "#7857FF",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "white",
+                  padding: "10px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: "100px",
+                  height: "40px",
+                }}
+              >
+                {loading ? (
+                  <div
+                    className="spinner-border spinner-border-sm text-light"
+                    role="status"
+                    style={{ width: "20px", height: "20px" }}
+                  >
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                ) : (
+                  "Continue"
+                )}
+              </button>
 
+
+              <button
+                onClick={fetchTestCases}
+                style={{
+                  backgroundColor: "green",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "white",
+                  padding: "10px 20px",
+                }}
+              >
+                Generate Test Cases
+              </button>
+            </div>
 
             {loading && <p style={{ marginTop: "10px" }}>Loading test cases...</p>}
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
