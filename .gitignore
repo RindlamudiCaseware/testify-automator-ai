@@ -1,6 +1,11 @@
+# Environment
 .env
 env/
+venv/
+
+# Node
 frontend-demo/node_modules
+node_modules
 
 # Logs
 logs
@@ -11,7 +16,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
+# Builds
 dist
 dist-ssr
 *.local
@@ -27,4 +32,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Backend data
 /backend/data/
