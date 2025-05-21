@@ -179,6 +179,8 @@ const Module = () => {
                     }}
                     onClick={() => document.getElementById("file-upload").click()}
                   >
+                     <i className="bi bi-cloud-arrow-up" style={{ fontSize: "45px", color: "#7857FF" }}></i>
+                    <h6 style={{ color: "#bbbfc6", fontWeight: "600" }}></h6>
                     <h6 style={{ color: "#8b6ffe" }}>Upload your Test Data</h6>
                     <input id="file-upload" type="file" multiple onChange={handleFileUpload} style={{ display: "none" }} />
                   </div>
