@@ -332,15 +332,24 @@ const Module = () => {
                             maxWidth: "1000px"
                           }}>
                             {typeof value === "string" && value.length > 100 ? (
-                              <details>
-                                <summary style={{ cursor: "pointer", marginBottom: "5px" }}>Show</summary>
-                                <pre style={{ margin: 0, fontFamily: "monospace", backgroundColor: "#f6f8fa", padding: "10px", borderRadius: "4px" }}>
-                                  {value}
-                                </pre>
-                              </details>
+  <details>
+    <summary style={{ cursor: "pointer", marginBottom: "5px" }}>Show</summary>
+    <pre style={{
+      margin: 0,
+      fontFamily: "monospace",
+      backgroundColor: "#f6f8fa",
+      padding: "10px",
+      borderRadius: "4px"
+    }}>
+      {value}
+    </pre>
+  </details>
                             ) : (
-                              <pre style={{ margin: 0, fontFamily: "monospace" }}>{value}</pre>
+                              <pre style={{ margin: 0, fontFamily: "monospace" }}>
+                                {typeof value === "object" ? JSON.stringify(value, null, 2) : value}
+                              </pre>
                             )}
+
                           </td>
                         </tr>
                       ))}
