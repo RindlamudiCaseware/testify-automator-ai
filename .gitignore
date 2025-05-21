@@ -39,3 +39,7 @@ __pycache__/
 
 # Backend data
 /backend/data/
+
+# Ignore generated test run folders
+/backend/generated_runs/
+/backend/generated_zips/

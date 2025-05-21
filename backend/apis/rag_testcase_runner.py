@@ -4,9 +4,12 @@ import os
 import sys
 import subprocess
 import re
+import json
+import shutil
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 from utils.match_utils import normalize_page_name
 from chromadb import PersistentClient
 from openai import OpenAI
@@ -14,7 +17,6 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 
 load_dotenv()
-
 router = APIRouter()
 
 class TestcaseRequest(BaseModel):
@@ -28,9 +30,12 @@ project_root = Path(__file__).resolve().parents[1]
 chroma_client = PersistentClient(path=str(project_root / "data" / "chroma_db"))
 collection = chroma_client.get_or_create_collection("element_metadata")
 
-# ✅ Store generated tests in root-level data folder
-testcase_dir = project_root / "data" / "generated_tests"
-testcase_dir.mkdir(parents=True, exist_ok=True)
+# === Output directories ===
+generated_runs_dir = project_root / "generated_runs"
+generated_runs_dir.mkdir(parents=True, exist_ok=True)
+
+zip_output_dir = project_root / "generated_zips"
+zip_output_dir.mkdir(parents=True, exist_ok=True)
 
 def filter_dom_matched_elements(page_name: str):
     page_name = normalize_page_name(page_name)
@@ -43,7 +48,6 @@ def generate_test_cases(enriched_data: list, source_url: str) -> str:
         label = e.get("label_text")
         if label:
             grouped_by_label.setdefault(label, []).append(e)
-
     formatted = "\n".join([f"{label}" for label in grouped_by_label])
 
     prompt = f"""You are a senior QA automation expert using Playwright in Python.
@@ -84,11 +88,24 @@ Use the following visible UI text elements as reference:
     )
     return res.choices[0].message.content.strip()
 
-def run_testcase(code: str, folder: Path):
-    folder.mkdir(parents=True, exist_ok=True)
-    test_path = folder / "test_generated.py"
-    log_path = folder / "test_output.log"
-    manual_path = folder / "manual_testcases.txt"
+def run_testcase(code: str, base_folder: Path, source_url: str, status_placeholder: str = "IN_PROGRESS"):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_name = f"{normalize_page_name(source_url)}_{timestamp}"
+    run_folder = base_folder / run_name
+    run_folder.mkdir(parents=True, exist_ok=True)
+
+    code_dir = run_folder / "code"
+    logs_dir = run_folder / "logs"
+    manual_dir = run_folder / "manual"
+    meta_dir = run_folder / "metadata"
+
+    for sub in [code_dir, logs_dir, manual_dir, meta_dir]:
+        sub.mkdir(parents=True, exist_ok=True)
+
+    test_path = code_dir / "test_login_add_to_cart_checkout.py"
+    log_path = logs_dir / "test_output.log"
+    manual_path = manual_dir / "manual_testcases.txt"
+    metadata_path = meta_dir / "metadata.json"
 
     match = re.search(r"```python(.*?)```", code, re.DOTALL)
     py_code = match.group(1).strip() if match else "# code block not found"
@@ -97,23 +114,26 @@ def run_testcase(code: str, folder: Path):
     test_path.write_text(py_code, encoding="utf-8")
     manual_path.write_text(manual, encoding="utf-8")
 
+    metadata_path.write_text(json.dumps({
+        "url": source_url,
+        "timestamp": timestamp,
+        "status": status_placeholder
+    }, indent=2), encoding="utf-8")
+
     print("[Run] Executing test case at:", test_path)
     result = subprocess.run([sys.executable, str(test_path)], capture_output=True, text=True)
     output = result.stdout + result.stderr
     log_path.write_text(output, encoding="utf-8")
 
-    # Enhanced logic to detect actual failures from logs
-    if (
-        result.returncode != 0
-        or "[FAIL]" in output
-        or "[CRASH]" in output
-        or "Locator.click: Error" in output
-    ):
-        status = "FAIL"
-    else:
-        status = "PASS"
+    status = "FAIL" if result.returncode != 0 or "[FAIL]" in output or "[CRASH]" in output or "Locator.click: Error" in output else "PASS"
 
-    return py_code, manual, output, status
+    json.dump({
+        "url": source_url,
+        "timestamp": timestamp,
+        "status": status
+    }, metadata_path.open("w", encoding="utf-8"), indent=2)
+
+    return py_code, manual, output, status, str(run_folder)
 
 @router.post("/rag/generate-and-run")
 def auto_generate_and_run(req: TestcaseRequest):
@@ -122,14 +142,24 @@ def auto_generate_and_run(req: TestcaseRequest):
     dom_elements = filter_dom_matched_elements(page_name)
 
     test_output = generate_test_cases(dom_elements, source_url)
-    folder = testcase_dir / normalize_page_name(page_name)
-    code, manual, output, status = run_testcase(test_output, folder)
+    code, manual, output, status, full_run_path = run_testcase(test_output, generated_runs_dir, source_url)
+
+    zip_name = f"{Path(full_run_path).name}.zip"
+    zip_path = zip_output_dir / zip_name
+    shutil.make_archive(str(zip_path).replace(".zip", ""), 'zip', full_run_path)
 
     return {
         "page_name": page_name,
         "status": status,
         "manual_testcases": manual,
         "python_test_code": code,
-        "test_output": output
+        "test_output": output,
+        "run_folder": full_run_path,
+        "zip_path": str(zip_path)
     }
 
+@router.get("/rag/download-zip")
+def download_zip(path: str = Query(..., description="Path to the .zip file")):
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="ZIP file not found.")
+    return FileResponse(path, filename=os.path.basename(path), media_type="application/zip")
