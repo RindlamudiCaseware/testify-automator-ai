@@ -33,17 +33,23 @@ const Module = () => {
   const handlePageNameChange = (e) => setPageName(e.target.value);
 
   const handleContinue = async () => {
-    let apiUrl = "";
-    let data;
-    let config = {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    };
+  let apiUrl = "";
+  let data;
+  let config = {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
 
+  // Start loading spinner
+  setLoading(true);
+  setError("");
+
+  try {
     if (inputType === "file") {
       if (selectedFiles.length === 0) {
         toast("Please upload at least one file.");
+        setLoading(false);
         return;
       }
 
@@ -57,6 +63,7 @@ const Module = () => {
     } else if (inputType === "userStory") {
       if (userStory.trim() === "") {
         toast("Please enter a user story.");
+        setLoading(false);
         return;
       }
 
@@ -66,6 +73,7 @@ const Module = () => {
     } else if (inputType === "url") {
       if (url.trim() === "") {
         toast("Please enter a correct URL.");
+        setLoading(false);
         return;
       }
 
@@ -73,6 +81,7 @@ const Module = () => {
         new URL(url);
       } catch (_) {
         toast("Please enter a valid URL (e.g., https://example.com)");
+        setLoading(false);
         return;
       }
 
@@ -80,24 +89,27 @@ const Module = () => {
       data = JSON.stringify({ url, page_name: pageName });
     }
 
-    try {
-      const response = await axios.post(apiUrl, data, config);
-      if (response.status === 200) {
-        toast.success("Data sent successfully.");
-        navigate("/locaters", {
-          state: {
-            type: inputType,
-            response: response.data,
-            userStory,
-            url,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error sending data to the API:", error);
-      toast.error("There was an error sending the data.");
+    const response = await axios.post(apiUrl, data, config);
+    if (response.status === 200) {
+      toast.success("Data sent successfully.");
+      navigate("/locaters", {
+        state: {
+          type: inputType,
+          response: response.data,
+          userStory,
+          url,
+        },
+      });
     }
+  } catch (error) {
+    console.error("Error sending data to the API:", error);
+    toast.error("There was an error sending the data.");
+  } finally {
+    // Stop loading spinner
+    setLoading(false);
+  }
   };
+
 
   const fetchTestCases = async () => {
   if (!url) {
@@ -234,33 +246,35 @@ const Module = () => {
               )}
             </div>
 
-            <div className="d-flex mt-4 gap-3">
-              <button
-                onClick={handleContinue}
-                style={{
-                  backgroundColor: "#7857FF",
-                  border: "none",
-                  borderRadius: "10px",
-                  color: "white",
-                  padding: "10px 20px",
-                }}
-              >
-                Continue
-              </button>
+            <button
+              onClick={handleContinue}
+              disabled={loading}
+              style={{
+                backgroundColor: "#7857FF",
+                border: "none",
+                borderRadius: "10px",
+                color: "white",
+                padding: "10px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: "100px",
+                height: "40px",
+              }}
+            >
+              {loading ? (
+                <div
+                  className="spinner-border spinner-border-sm text-light"
+                  role="status"
+                  style={{ width: "20px", height: "20px" }}
+                >
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              ) : (
+                "Continue"
+              )}
+            </button>
 
-              <button
-                onClick={fetchTestCases}
-                style={{
-                  backgroundColor: "green",
-                  border: "none",
-                  borderRadius: "10px",
-                  color: "white",
-                  padding: "10px 20px",
-                }}
-              >
-                Generate Test Cases
-              </button>
-            </div>
 
             {loading && <p style={{ marginTop: "10px" }}>Loading test cases...</p>}
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
