@@ -37,6 +37,11 @@ generated_runs_dir.mkdir(parents=True, exist_ok=True)
 zip_output_dir = project_root / "generated_zips"
 zip_output_dir.mkdir(parents=True, exist_ok=True)
 
+def filter_all_pages():
+    records = collection.get()
+    page_names = set(meta.get("page_name", "unknown") for meta in records.get("metadatas", []))
+    return list(page_names)
+
 def filter_dom_matched_elements(page_name: str):
     page_name = normalize_page_name(page_name)
     results = collection.get(where={"page_name": page_name})
@@ -88,24 +93,22 @@ Use the following visible UI text elements as reference:
     )
     return res.choices[0].message.content.strip()
 
-def run_testcase(code: str, base_folder: Path, source_url: str, status_placeholder: str = "IN_PROGRESS"):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_name = f"{normalize_page_name(source_url)}_{timestamp}"
-    run_folder = base_folder / run_name
-    run_folder.mkdir(parents=True, exist_ok=True)
+def run_testcase(page_name: str, code: str, source_url: str, run_folder: Path, status_placeholder: str = "IN_PROGRESS"):
+    page_folder = run_folder / page_name
+    tests_dir = page_folder / "tests"
+    page_code_dir = page_folder / "page"
+    logs_dir = page_folder / "logs"
+    manual_dir = page_folder / "manual"
+    meta_dir = page_folder / "metadata"
 
-    code_dir = run_folder / "code"
-    logs_dir = run_folder / "logs"
-    manual_dir = run_folder / "manual"
-    meta_dir = run_folder / "metadata"
-
-    for sub in [code_dir, logs_dir, manual_dir, meta_dir]:
+    for sub in [tests_dir, page_code_dir, logs_dir, manual_dir, meta_dir]:
         sub.mkdir(parents=True, exist_ok=True)
 
-    test_path = code_dir / "test_login_add_to_cart_checkout.py"
-    log_path = logs_dir / "test_output.log"
-    manual_path = manual_dir / "manual_testcases.txt"
-    metadata_path = meta_dir / "metadata.json"
+    test_path = tests_dir / f"test_{page_name}.py"
+    log_path = logs_dir / f"test_output_{page_name}.log"
+    manual_path = manual_dir / f"manual_testcases_{page_name}.txt"
+    metadata_path = meta_dir / f"metadata_{page_name}.json"
+    page_object_path = page_code_dir / f"{page_name}_page.py"
 
     match = re.search(r"```python(.*?)```", code, re.DOTALL)
     py_code = match.group(1).strip() if match else "# code block not found"
@@ -114,9 +117,24 @@ def run_testcase(code: str, base_folder: Path, source_url: str, status_placehold
     test_path.write_text(py_code, encoding="utf-8")
     manual_path.write_text(manual, encoding="utf-8")
 
+    # Auto-generate page object template
+    page_class_code = f'''from playwright.sync_api import Page, expect
+
+class {page_name.capitalize()}Page:
+    def __init__(self, page: Page):
+        self.page = page
+
+    def navigate(self):
+        self.page.goto("{source_url}")
+
+    def assert_common_elements(self):
+        pass
+'''.strip()
+    page_object_path.write_text(page_class_code, encoding="utf-8")
+
     metadata_path.write_text(json.dumps({
         "url": source_url,
-        "timestamp": timestamp,
+        "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
         "status": status_placeholder
     }, indent=2), encoding="utf-8")
 
@@ -129,7 +147,7 @@ def run_testcase(code: str, base_folder: Path, source_url: str, status_placehold
 
     json.dump({
         "url": source_url,
-        "timestamp": timestamp,
+        "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
         "status": status
     }, metadata_path.open("w", encoding="utf-8"), indent=2)
 
@@ -138,25 +156,35 @@ def run_testcase(code: str, base_folder: Path, source_url: str, status_placehold
 @router.post("/rag/generate-and-run")
 def auto_generate_and_run(req: TestcaseRequest):
     source_url = req.source_url
-    page_name = normalize_page_name(source_url)
-    dom_elements = filter_dom_matched_elements(page_name)
+    run_page_names = filter_all_pages()
+    final_status = {}
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_folder = generated_runs_dir / f"run_{timestamp}"
+    run_folder.mkdir(parents=True, exist_ok=True)
+    zip_paths = []
 
-    test_output = generate_test_cases(dom_elements, source_url)
-    code, manual, output, status, full_run_path = run_testcase(test_output, generated_runs_dir, source_url)
+    for page_name in run_page_names:
+        dom_elements = filter_dom_matched_elements(page_name)
+        if not dom_elements:
+            continue
+        test_output = generate_test_cases(dom_elements, source_url)
+        code, manual, output, status, _ = run_testcase(page_name, test_output, source_url, run_folder)
 
-    zip_name = f"{Path(full_run_path).name}.zip"
-    zip_path = zip_output_dir / zip_name
-    shutil.make_archive(str(zip_path).replace(".zip", ""), 'zip', full_run_path)
+        zip_name = f"{Path(run_folder).name}_{page_name}.zip"
+        zip_path = zip_output_dir / zip_name
+        shutil.make_archive(str(zip_path).replace(".zip", ""), 'zip', run_folder / page_name)
+        zip_paths.append(str(zip_path))
 
-    return {
-        "page_name": page_name,
-        "status": status,
-        "manual_testcases": manual,
-        "python_test_code": code,
-        "test_output": output,
-        "run_folder": full_run_path,
-        "zip_path": str(zip_path)
-    }
+        final_status[page_name] = {
+            "status": status,
+            "manual_testcases": manual,
+            "python_test_code": code,
+            "test_output": output,
+            "run_folder": str(run_folder / page_name),
+            "zip_path": str(zip_path)
+        }
+
+    return final_status
 
 @router.get("/rag/download-zip")
 def download_zip(path: str = Query(..., description="Path to the .zip file")):

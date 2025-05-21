@@ -32,3 +32,16 @@ dist-ssr
 # Ignore generated test run folders
 /backend/generated_runs/
 /backend/generated_zips/
+
+# Bytecode cache
+__pycache__/
+*.py[cod]
+
+# ChromaDB database files
+/backend/chroma_db/
+**/chroma.sqlite3
+
+# Already included, but make sure these are present
+/backend/data/
+/backend/generated_runs/
+/backend/generated_zips/
