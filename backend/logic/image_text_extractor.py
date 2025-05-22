@@ -8,7 +8,7 @@ from typing import List, Optional
 import os
 from utils.match_utils import normalize_page_name
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = r"C:\Users\RajeshIndlamudi\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
 
 def sanitize_metadata(record: dict) -> dict:
     return {k: (str(v) if v is not None and not isinstance(v, (dict, list)) else "" if v is None else str(v)) for k, v in record.items()}
