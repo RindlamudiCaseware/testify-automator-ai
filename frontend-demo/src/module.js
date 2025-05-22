@@ -18,6 +18,10 @@ const Module = () => {
   const [error, setError] = useState("");
   const [testCases, setTestCases] = useState([]);
 
+  const [loadingIngestion, setLoadingIngestion] = useState(false); // for Continue
+  const [loadingGeneration, setLoadingGeneration] = useState(false); // for Generate Test Cases
+
+
   const location = useLocation();
 
   const navigate = useNavigate();
@@ -41,15 +45,13 @@ const Module = () => {
     },
   };
 
-  // Start loading spinner
-  setLoading(true);
+  setLoadingIngestion(true); // ✅ Only for "Continue" button
   setError("");
 
   try {
     if (inputType === "file") {
       if (selectedFiles.length === 0) {
         toast("Please upload at least one file.");
-        setLoading(false);
         return;
       }
 
@@ -63,7 +65,6 @@ const Module = () => {
     } else if (inputType === "userStory") {
       if (userStory.trim() === "") {
         toast("Please enter a user story.");
-        setLoading(false);
         return;
       }
 
@@ -73,7 +74,6 @@ const Module = () => {
     } else if (inputType === "url") {
       if (url.trim() === "") {
         toast("Please enter a correct URL.");
-        setLoading(false);
         return;
       }
 
@@ -81,7 +81,6 @@ const Module = () => {
         new URL(url);
       } catch (_) {
         toast("Please enter a valid URL (e.g., https://example.com)");
-        setLoading(false);
         return;
       }
 
@@ -101,42 +100,44 @@ const Module = () => {
         },
       });
     }
+
   } catch (error) {
     console.error("Error sending data to the API:", error);
     toast.error("There was an error sending the data.");
   } finally {
-    // Stop loading spinner
-    setLoading(false);
+    setLoadingIngestion(false); // ✅ Reset after complete
   }
-  };
+};
+
 
 
   const fetchTestCases = async () => {
-  if (!url) {
-    setError("Please enter a valid URL");
-    return;
-  }
+    if (!url) {
+      setError("Please enter a valid URL");
+      return;
+    }
 
-  setLoading(true);
-  setError("");
-  setTestCases([]);
-  setFullTestData(null); // clear previous
+    setLoadingGeneration(true); // ✅ Only for "Generate Test Cases" button
+    setError("");
+    setTestCases([]);
+    setFullTestData(null); // Clear previous
 
-  try {
-    const response = await axios.post("http://localhost:8001/rag/generate-and-run", {
-      source_url: url
-    });
+    try {
+      const response = await axios.post("http://localhost:8001/rag/generate-and-run", {
+        source_url: url
+      });
 
-    const data = response.data;
-    setFullTestData(data); // ✅ store full JSON
-    toast.success("Test case generation successful.");
+      const data = response.data;
+      setFullTestData(data);
+      toast.success("Test case generation successful.");
 
-  } catch (err) {
-    setError(err.response?.data?.message || "Error fetching test cases");
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      setError(err.response?.data?.message || "Error fetching test cases");
+    } finally {
+      setLoadingGeneration(false); // ✅ Reset after complete
+    }
+  };
+
 
 
   return (
@@ -249,7 +250,7 @@ const Module = () => {
             <div className="d-flex mt-4 gap-3">
               <button
                 onClick={handleContinue}
-                disabled={loading}
+                disabled={loadingIngestion}
                 style={{
                   backgroundColor: "#7857FF",
                   border: "none",
@@ -263,12 +264,8 @@ const Module = () => {
                   height: "40px",
                 }}
               >
-                {loading ? (
-                  <div
-                    className="spinner-border spinner-border-sm text-light"
-                    role="status"
-                    style={{ width: "20px", height: "20px" }}
-                  >
+                {loadingIngestion ? (
+                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }}>
                     <span className="visually-hidden">Loading...</span>
                   </div>
                 ) : (
@@ -277,18 +274,29 @@ const Module = () => {
               </button>
 
 
+
               <button
                 onClick={fetchTestCases}
+                disabled={loadingGeneration}
                 style={{
                   backgroundColor: "green",
                   border: "none",
                   borderRadius: "10px",
                   color: "white",
                   padding: "10px 20px",
+                  minWidth: "180px",
+                  height: "40px"
                 }}
               >
-                Generate Test Cases
+                {loadingGeneration ? (
+                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }}>
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                ) : (
+                  "Generate Test Cases"
+                )}
               </button>
+
             </div>
 
             {loading && <p style={{ marginTop: "10px" }}>Loading test cases...</p>}
@@ -296,66 +304,67 @@ const Module = () => {
 
             {fullTestData && (
               <div style={{ marginTop: "20px" }}>
-                <h5>Test Case Details</h5>
-                <div style={{ overflowX: "auto", border: "1px solid #ddd", borderRadius: "8px" }}>
-                  <table style={{ borderCollapse: "collapse", width: "100%", fontFamily: "Arial, sans-serif" }}>
-                    <thead>
-                      <tr>
-                        <th style={{
-                          textAlign: "left",
-                          padding: "12px",
-                          backgroundColor: "#f2f2f2",
-                          borderBottom: "1px solid #ddd"
-                        }}>Key</th>
-                        <th style={{
-                          textAlign: "left",
-                          padding: "12px",
-                          backgroundColor: "#f2f2f2",
-                          borderBottom: "1px solid #ddd"
-                        }}>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(fullTestData).map(([key, value]) => (
-                        <tr key={key}>
-                          <td style={{
-                            padding: "12px",
-                            borderBottom: "1px solid #ddd",
-                            fontWeight: "bold",
-                            verticalAlign: "top"
-                          }}>{key}</td>
-                          <td style={{
-                            padding: "12px",
-                            borderBottom: "1px solid #ddd",
-                            verticalAlign: "top",
-                            whiteSpace: "pre-wrap",
-                            maxWidth: "1000px"
-                          }}>
-                            {typeof value === "string" && value.length > 100 ? (
-  <details>
-    <summary style={{ cursor: "pointer", marginBottom: "5px" }}>Show</summary>
-    <pre style={{
-      margin: 0,
-      fontFamily: "monospace",
-      backgroundColor: "#f6f8fa",
-      padding: "10px",
-      borderRadius: "4px"
-    }}>
-      {value}
-    </pre>
-  </details>
-                            ) : (
-                              <pre style={{ margin: 0, fontFamily: "monospace" }}>
-                                {typeof value === "object" ? JSON.stringify(value, null, 2) : value}
-                              </pre>
-                            )}
-
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <h3 style={{ marginBottom: "15px", color: "#7857FF",fontWeight:"bold",margin:"10px" }}> Test Case Details</h3>
+                {Object.entries(fullTestData).map(([testCaseName, testDetails]) => (
+                  <div key={testCaseName} style={{ marginBottom: "40px" }}>
+                    <h4 style={{ color: "#333", margin: "20px 0 10px" }}> Page Name : {testCaseName}</h4>
+                    <div style={{ overflowX: "auto", border: "1px solid #ddd", borderRadius: "8px" }}>
+                      <table style={{ borderCollapse: "collapse", width: "100%", fontFamily: "Arial, sans-serif" }}>
+                        <thead>
+                          <tr>
+                            <th style={{
+                              textAlign: "left",
+                              padding: "12px",
+                              backgroundColor: "#f2f2f2",
+                              borderBottom: "1px solid #ddd"
+                            }}>Key</th>
+                            <th style={{
+                              textAlign: "left",
+                              padding: "12px",
+                              backgroundColor: "#f2f2f2",
+                              borderBottom: "1px solid #ddd"
+                            }}>Output</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(testDetails).map(([key, value]) => (
+                            <tr key={key}>
+                              <td style={{
+                                padding: "12px",
+                                borderBottom: "1px solid #ddd",
+                                fontWeight: "bold",
+                                verticalAlign: "top"
+                              }}>{key}</td>
+                              <td style={{
+                                padding: "12px",
+                                borderBottom: "1px solid #ddd",
+                                verticalAlign: "top",
+                                whiteSpace: "pre-wrap",
+                                maxWidth: "1000px"
+                              }}>
+                                {typeof value === "string" ? (
+                                  <pre style={{
+                                    margin: 0,
+                                    fontFamily: "monospace",
+                                    backgroundColor: "black",
+                                    color:"white",
+                                    padding: "12px",
+                                    borderRadius: "4px",
+                                    overflowX: "auto"
+                                  }}>
+                                    <code>{value}</code>
+                                  </pre>
+                                ) : (
+                                  <code>{JSON.stringify(value, null, 2)}</code>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
