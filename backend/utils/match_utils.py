@@ -38,3 +38,12 @@ def normalize_page_name(input_string: str) -> str:
         return base.lower()
 
     return input_string
+
+def generalize_label(label: str) -> str:
+    """Map raw field names to semantic equivalents like username/password."""
+    label = normalize_text(label)
+    if "user" in label or "email" in label or "login" in label:
+        return "username"
+    if "pass" in label or "pwd" in label:
+        return "password"
+    return label

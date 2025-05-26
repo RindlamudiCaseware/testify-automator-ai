@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import "react-toastify/dist/ReactToastify.css";
-import { useLocation } from "react-router-dom";
 
 const Module = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -12,19 +10,13 @@ const Module = () => {
   const [pageName, setPageName] = useState("");
   const [inputType, setInputType] = useState("file");
 
-  const [fullTestData, setFullTestData] = useState(null); // 👈 for storing full response
-
-  const [loading, setLoading] = useState(false);
+  const [fullTestData, setFullTestData] = useState(null);
+  const [loadingIngestion, setLoadingIngestion] = useState(false);
+  const [loadingGeneration, setLoadingGeneration] = useState(false);
   const [error, setError] = useState("");
   const [testCases, setTestCases] = useState([]);
+  const [ingestionSuccess, setIngestionSuccess] = useState(false); // ✅ for success message
 
-  const [loadingIngestion, setLoadingIngestion] = useState(false); // for Continue
-  const [loadingGeneration, setLoadingGeneration] = useState(false); // for Generate Test Cases
-
-
-  const location = useLocation();
-
-  const navigate = useNavigate();
   const MAX_FILES = 20;
 
   const handleFileUpload = (e) => {
@@ -37,79 +29,70 @@ const Module = () => {
   const handlePageNameChange = (e) => setPageName(e.target.value);
 
   const handleContinue = async () => {
-  let apiUrl = "";
-  let data;
-  let config = {
-    headers: {
-      "Content-Type": "application/json",
-    },
+    let apiUrl = "";
+    let data;
+    let config = { headers: { "Content-Type": "application/json" } };
+
+    setLoadingIngestion(true);
+    setError("");
+    setIngestionSuccess(false); // ✅ reset on new submission
+
+    try {
+      if (inputType === "file") {
+        if (selectedFiles.length === 0) {
+          toast("Please upload at least one file.");
+          return;
+        }
+
+        const formData = new FormData();
+        selectedFiles.forEach((file) => formData.append("file", file));
+
+        apiUrl = "http://localhost:8001/upload-image";
+        data = formData;
+        config.headers = { "Content-Type": "multipart/form-data" };
+
+      } else if (inputType === "userStory") {
+        if (userStory.trim() === "") {
+          toast("Please enter a user story.");
+          return;
+        }
+
+        apiUrl = "http://localhost:8001/rag/generate-from-story";
+        data = JSON.stringify({ user_story: userStory }); // 👈 match the Pydantic model
+        config.headers = { "Content-Type": "application/json" };
+
+
+
+      } else if (inputType === "url") {
+        if (url.trim() === "") {
+          toast("Please enter a correct URL.");
+          return;
+        }
+
+        try {
+          new URL(url);
+        } catch (_) {
+          toast("Please enter a valid URL (e.g., https://example.com)");
+          return;
+        }
+
+        apiUrl = "http://localhost:8001/launch-browser";
+        data = JSON.stringify({ url, page_name: pageName });
+      }
+
+      const response = await axios.post(apiUrl, data, config);
+      if (response.status === 200) {
+        toast.success("Data sent successfully.");
+        setIngestionSuccess(true); // ✅ trigger success message
+      }
+
+    } catch (error) {
+      console.error("Error sending data to the API:", error);
+      toast.error("There was an error sending the data.");
+    } finally {
+      setLoadingIngestion(false);
+    }
   };
-
-  setLoadingIngestion(true); // ✅ Only for "Continue" button
-  setError("");
-
-  try {
-    if (inputType === "file") {
-      if (selectedFiles.length === 0) {
-        toast("Please upload at least one file.");
-        return;
-      }
-
-      const formData = new FormData();
-      selectedFiles.forEach((file) => formData.append("file", file));
-
-      apiUrl = "http://localhost:8001/upload-image";
-      data = formData;
-      config.headers = { "Content-Type": "multipart/form-data" };
-
-    } else if (inputType === "userStory") {
-      if (userStory.trim() === "") {
-        toast("Please enter a user story.");
-        return;
-      }
-
-      apiUrl = "http://localhost:8001/submit-story";
-      data = JSON.stringify({ userStory });
-
-    } else if (inputType === "url") {
-      if (url.trim() === "") {
-        toast("Please enter a correct URL.");
-        return;
-      }
-
-      try {
-        new URL(url);
-      } catch (_) {
-        toast("Please enter a valid URL (e.g., https://example.com)");
-        return;
-      }
-
-      apiUrl = "http://localhost:8001/launch-browser";
-      data = JSON.stringify({ url, page_name: pageName });
-    }
-
-    const response = await axios.post(apiUrl, data, config);
-    if (response.status === 200) {
-      toast.success("Data sent successfully.");
-      navigate("/locaters", {
-        state: {
-          type: inputType,
-          response: response.data,
-          userStory,
-          url,
-        },
-      });
-    }
-
-  } catch (error) {
-    console.error("Error sending data to the API:", error);
-    toast.error("There was an error sending the data.");
-  } finally {
-    setLoadingIngestion(false); // ✅ Reset after complete
-  }
-};
-
-
 
   const fetchTestCases = async () => {
     if (!url) {
@@ -117,10 +100,10 @@ const Module = () => {
       return;
     }
 
-    setLoadingGeneration(true); // ✅ Only for "Generate Test Cases" button
+    setLoadingGeneration(true);
     setError("");
     setTestCases([]);
-    setFullTestData(null); // Clear previous
+    setFullTestData(null);
 
     try {
       const response = await axios.post("http://localhost:8001/rag/generate-and-run", {
@@ -134,11 +117,9 @@ const Module = () => {
     } catch (err) {
       setError(err.response?.data?.message || "Error fetching test cases");
     } finally {
-      setLoadingGeneration(false); // ✅ Reset after complete
+      setLoadingGeneration(false);
     }
   };
-
-
 
   return (
     <div className="container-fluid p-0" style={{ backgroundColor: "#f8f9fc", minHeight: "100vh" }}>
@@ -179,7 +160,8 @@ const Module = () => {
             <div style={{ border: "2px solid #f6f6f8", padding: "20px", borderRadius: "5px" }}>
               {inputType === "file" && (
                 <>
-                  <div className="p-4 text-center" style={{ border: "2px dashed #d6d8e1", borderRadius: "5px", backgroundColor: "#fafbfe", cursor: "pointer" }}
+                  <div className="p-4 text-center"
+                    style={{ border: "2px dashed #d6d8e1", borderRadius: "5px", backgroundColor: "#fafbfe", cursor: "pointer" }}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
@@ -192,9 +174,9 @@ const Module = () => {
                     }}
                     onClick={() => document.getElementById("file-upload").click()}
                   >
-                     <i className="bi bi-cloud-arrow-up" style={{ fontSize: "45px", color: "#7857FF" }}></i>
-                    <h6 style={{ color: "#bbbfc6", fontWeight: "600" }}></h6>
+                    <i className="bi bi-cloud-arrow-up" style={{ fontSize: "45px", color: "#7857FF" }}></i>
                     <h6 style={{ color: "#8b6ffe" }}>Upload your Test Data</h6>
+                    <p>Drag & drop your files here or click to browse</p>
                     <input id="file-upload" type="file" multiple onChange={handleFileUpload} style={{ display: "none" }} />
                   </div>
                   {selectedFiles.length > 0 && (
@@ -214,15 +196,13 @@ const Module = () => {
               )}
 
               {inputType === "userStory" && (
-                <>
-                  <textarea
-                    placeholder="Enter User Story"
-                    onChange={handleUserStoryChange}
-                    value={userStory}
-                    className="form-control"
-                    style={{ minHeight: "100px", backgroundColor: "#f8f9fc" }}
-                  ></textarea>
-                </>
+                <textarea
+                  placeholder="Enter User Story"
+                  onChange={handleUserStoryChange}
+                  value={userStory}
+                  className="form-control"
+                  style={{ minHeight: "100px", backgroundColor: "#f8f9fc" }}
+                ></textarea>
               )}
 
               {inputType === "url" && (
@@ -265,15 +245,11 @@ const Module = () => {
                 }}
               >
                 {loadingIngestion ? (
-                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }}>
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
+                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
                 ) : (
                   "Continue"
                 )}
               </button>
-
-
 
               <button
                 onClick={fetchTestCases}
@@ -289,69 +265,44 @@ const Module = () => {
                 }}
               >
                 {loadingGeneration ? (
-                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }}>
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
+                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
                 ) : (
                   "Generate Test Cases"
                 )}
               </button>
-
             </div>
 
-            {loading && <p style={{ marginTop: "10px" }}>Loading test cases...</p>}
+            {/* ✅ Success Message */}
+            {ingestionSuccess && (
+              <p style={{ marginTop: "10px", color: "green", fontWeight: "bold" }}>
+                ✅ Success
+              </p>
+            )}
+
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
 
+            {/* Test Case Table remains unchanged */}
             {fullTestData && (
               <div style={{ marginTop: "20px" }}>
-                <h3 style={{ marginBottom: "15px", color: "#7857FF",fontWeight:"bold",margin:"10px" }}> Test Case Details</h3>
+                <h3 style={{ marginBottom: "15px", color: "#7857FF", fontWeight: "bold", margin: "10px" }}>Test Case Details</h3>
                 {Object.entries(fullTestData).map(([testCaseName, testDetails]) => (
                   <div key={testCaseName} style={{ marginBottom: "40px" }}>
-                    <h4 style={{ color: "#333", margin: "20px 0 10px" }}> Page Name : {testCaseName}</h4>
+                    <h4 style={{ color: "#333", margin: "20px 0 10px" }}>Page Name : {testCaseName}</h4>
                     <div style={{ overflowX: "auto", border: "1px solid #ddd", borderRadius: "8px" }}>
                       <table style={{ borderCollapse: "collapse", width: "100%", fontFamily: "Arial, sans-serif" }}>
                         <thead>
                           <tr>
-                            <th style={{
-                              textAlign: "left",
-                              padding: "12px",
-                              backgroundColor: "#f2f2f2",
-                              borderBottom: "1px solid #ddd"
-                            }}>Key</th>
-                            <th style={{
-                              textAlign: "left",
-                              padding: "12px",
-                              backgroundColor: "#f2f2f2",
-                              borderBottom: "1px solid #ddd"
-                            }}>Output</th>
+                            <th style={{ textAlign: "left", padding: "12px", backgroundColor: "#f2f2f2", borderBottom: "1px solid #ddd" }}>Key</th>
+                            <th style={{ textAlign: "left", padding: "12px", backgroundColor: "#f2f2f2", borderBottom: "1px solid #ddd" }}>Output</th>
                           </tr>
                         </thead>
                         <tbody>
                           {Object.entries(testDetails).map(([key, value]) => (
                             <tr key={key}>
-                              <td style={{
-                                padding: "12px",
-                                borderBottom: "1px solid #ddd",
-                                fontWeight: "bold",
-                                verticalAlign: "top"
-                              }}>{key}</td>
-                              <td style={{
-                                padding: "12px",
-                                borderBottom: "1px solid #ddd",
-                                verticalAlign: "top",
-                                whiteSpace: "pre-wrap",
-                                maxWidth: "1000px"
-                              }}>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #ddd", fontWeight: "bold", verticalAlign: "top" }}>{key}</td>
+                              <td style={{ padding: "12px", borderBottom: "1px solid #ddd", verticalAlign: "top", whiteSpace: "pre-wrap", maxWidth: "1000px" }}>
                                 {typeof value === "string" ? (
-                                  <pre style={{
-                                    margin: 0,
-                                    fontFamily: "monospace",
-                                    backgroundColor: "black",
-                                    color:"white",
-                                    padding: "12px",
-                                    borderRadius: "4px",
-                                    overflowX: "auto"
-                                  }}>
+                                  <pre style={{ margin: 0, fontFamily: "monospace", backgroundColor: "black", color: "white", padding: "12px", borderRadius: "4px", overflowX: "auto" }}>
                                     <code>{value}</code>
                                   </pre>
                                 ) : (
@@ -367,8 +318,6 @@ const Module = () => {
                 ))}
               </div>
             )}
-
-
           </div>
         </div>
       </div>
