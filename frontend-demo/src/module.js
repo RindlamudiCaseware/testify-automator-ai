@@ -33,7 +33,6 @@ const Module = () => {
 
   const handleUserStoryChange = (e) => setUserStory(e.target.value);
   const handleUrlChange = (e) => setUrl(e.target.value);
-  const handlePageNameChange = (e) => setPageName(e.target.value);
 
   const handleContinue = async () => {
     setLoadingIngestion(true);
@@ -253,7 +252,7 @@ const Module = () => {
           </div>
         </div>
 
-        <div className="col-xl-12 m-5 mt-2">
+        <div className="col-xl-12 m-5 mt-5">
           <h1 style={{ color: "#7857FF", fontSize: "28px" }}>
             AI-Powered Test Automation
           </h1>
@@ -268,9 +267,23 @@ const Module = () => {
             </p>
 
             <div>
-              <button className="btn btn-light me-4" onClick={() => setInputType("file")}>Upload files</button>
-              <button className="btn btn-light me-4" onClick={() => setInputType("userStory")}>Enter User Story</button>
-              <button className="btn btn-light" onClick={() => setInputType("url")}>Enter URL</button>
+              <button className="btn btn-secondary me-4" onClick={() => setInputType("file")}>Upload files</button>
+              <button className="btn btn-secondary me-4" onClick={() => setInputType("userStory")}>Enter User Story</button>
+              <button className="btn btn-secondary me-4" onClick={() => setInputType("url")}>Enter URL</button><button 
+                onClick={executeStoryTest}
+                disabled={loadingExecution}
+                className="btn btn-secondary me-4"
+                style={{
+                  height:"40px",
+                  width:"90px"
+                }}
+              > 
+                {loadingExecution ? (
+                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
+                ) : (
+                  "Execute"
+                )}
+              </button>
             </div>
 
             <hr />
@@ -310,126 +323,104 @@ const Module = () => {
                       ))}
                     </div>
                   )}
+
+                  <div className="mt-4">
+                    <button
+                      onClick={handleContinue}
+                      disabled={loadingIngestion}
+                      style={{
+                        backgroundColor: "green",
+                        border: "none",
+                        borderRadius: "10px",
+                        color: "white",
+                        padding: "10px 20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minWidth: "100px",
+                        height: "40px",
+                      }}
+                    >
+                      {loadingIngestion ? (
+                        <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
+                      ) : (
+                        "Upload Files"
+                      )}
+                    </button>
+                    </div>
                 </>
+                
               )}
 
               {inputType === "userStory" && (
-                <textarea
-                  placeholder="Enter User Story"
-                  onChange={handleUserStoryChange}
-                  value={userStory}
-                  className="form-control"
-                  style={{ minHeight: "100px", backgroundColor: "#f8f9fc" }}
-                ></textarea>
+                <div>
+                  <h5 className="mb-3"> Enter user story or requirements </h5>
+                    <textarea
+                    placeholder="As an user, I want to be able to.. so that I can..."
+                    onChange={handleUserStoryChange}
+                    value={userStory}
+                    className="form-control"
+                    style={{ minHeight: "100px", backgroundColor: "#f8f9fc" }}
+                  ></textarea>
+                  <div className="mt-4">
+                    <button
+                      onClick={fetchTestCases}
+                      disabled={loadingGeneration}
+                      style={{
+                        backgroundColor: "green",
+                        border: "none",
+                        borderRadius: "10px",
+                        color: "white",
+                        padding: "10px 20px",
+                        minWidth: "180px",
+                        height: "40px"
+                      }}
+                    >
+                      {loadingGeneration ? (
+                        <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
+                      ) : (
+                        "Generate Test Cases"
+                      )}
+                    </button>
+                  </div>
+                </div>
               )}
 
               {inputType === "url" && (
                 <>
+                  <h5> Enter Web Application URL </h5>
                   <input
                     type="url"
                     placeholder="https://example.com"
                     onChange={handleUrlChange}
                     value={url}
                     className="form-control"
-                    style={{ backgroundColor: "#f8f9fc", marginBottom: "10px" }}
+                    style={{ backgroundColor: "#f8f9fc", marginBottom: "40px",width:"500px", marginTop:"20px" }}
                   />
-                  <input
-                    type="text"
-                    placeholder="Page Name"
-                    onChange={handlePageNameChange}
-                    value={pageName}
-                    className="form-control"
-                    style={{ backgroundColor: "#f8f9fc" }}
-                  />
+                  
+                  <div className="mt-4">
+                      <button 
+                        onClick={enrichLocaters}
+                        disabled={loadingEnrich}
+                        style={{
+                          backgroundColor: "green",
+                          border: "none",
+                          borderRadius: "10px",
+                          color: "white",
+                          padding: "10px 20px",
+                          minWidth: "180px",
+                          height: "40px"
+                        }}
+                      >
+                        {loadingEnrich ? (
+                          <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
+                        ) : (
+                          "Enrich Locaters"
+                        )}
+                      </button>
+                  </div>
                 </>
               )}
-            </div>
-
-            <div className="d-flex mt-4 gap-3">
-              <button
-                onClick={handleContinue}
-                disabled={loadingIngestion}
-                style={{
-                  backgroundColor: "#7857FF",
-                  border: "none",
-                  borderRadius: "10px",
-                  color: "white",
-                  padding: "10px 20px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minWidth: "100px",
-                  height: "40px",
-                }}
-              >
-                {loadingIngestion ? (
-                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
-                ) : (
-                  "Upload Files"
-                )}
-              </button>
-
-              <button
-                onClick={fetchTestCases}
-                disabled={loadingGeneration}
-                style={{
-                  backgroundColor: "green",
-                  border: "none",
-                  borderRadius: "10px",
-                  color: "white",
-                  padding: "10px 20px",
-                  minWidth: "180px",
-                  height: "40px"
-                }}
-              >
-                {loadingGeneration ? (
-                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
-                ) : (
-                  "Generate Test Cases"
-                )}
-              </button>
-
-              <button 
-                onClick={enrichLocaters}
-                disabled={loadingEnrich}
-                style={{
-                  backgroundColor: "gray",
-                  border: "none",
-                  borderRadius: "10px",
-                  color: "white",
-                  padding: "10px 20px",
-                  minWidth: "180px",
-                  height: "40px"
-                }}
-              >
-                {loadingEnrich ? (
-                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
-                ) : (
-                  "Enrich Locaters"
-                )}
-              </button>
-
-
-              <button 
-                onClick={executeStoryTest}
-                disabled={loadingExecution}
-                style={{
-                  backgroundColor: "#ddd",
-                  border: "none",
-                  borderRadius: "10px",
-                  color: "black",
-                  padding: "10px 20px",
-                  minWidth: "180px",
-                  height: "40px"
-                }}
-              > 
-                {loadingExecution ? (
-                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
-                ) : (
-                  "Execute"
-                )}
-              </button>
-
             </div>
 
             {/* ✅ Success Message */}
@@ -443,14 +434,87 @@ const Module = () => {
 
             {/* story test cases diaplay */}
             {testCasesGeneratedFromStory && (
-              <div style={{ marginTop: "20px", padding: "10px", border: "1px solid #ccc", borderRadius: "10px" }}>
-                <h4>Generated Test Cases:</h4>
-                <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
-                  {JSON.stringify(testCasesGeneratedFromStory, null, 2)}
-                </pre>
+              <div
+                style={{
+                  marginTop: "20px",
+                  padding: "15px",
+                  border: "1px solid #ccc",
+                  borderRadius: "10px",
+                  backgroundColor: "#fafafa",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                }}
+              >
+                <h4 style={{ marginBottom: "15px", color: "#333" }}>Generated Test Cases:</h4>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                    fontSize: "14px",
+                    color: "#444",
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#e8e8e8",
+                          fontWeight: "600",
+                          width: "50%",
+                        }}
+                      >
+                        Manual Test Cases
+                      </th>
+                      <th
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#e8e8e8",
+                          fontWeight: "600",
+                          width: "50%",
+                        }}
+                      >
+                        Automated Test Cases
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "12px",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          verticalAlign: "top",
+                          backgroundColor: "#fff",
+                        }}
+                      >
+                        {testCasesGeneratedFromStory.manual_testcase}
+                      </td>
+                      <td
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "12px",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          fontFamily: "Consolas, monospace",
+                          fontSize: "13px",
+                          backgroundColor: "#f7f7f7",
+                          verticalAlign: "top",
+                        }}
+                      >
+                        {testCasesGeneratedFromStory.auto_testcase}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             )}
-
 
             {/* Test Case Table */}
             {fullTestData && (
@@ -463,16 +527,42 @@ const Module = () => {
                 </pre>
               </div>
             )}
-
-
             
             {/* Execute test cases */}
             {executionResult && (
               <div style={{ marginTop: "20px", padding: "10px", border: "1px solid #ccc", borderRadius: "10px" }}>
                 <h4>Execution Result:</h4>
-                <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
-                  {JSON.stringify(executionResult, null, 2)}
-                </pre>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ border: "1px solid #ccc", padding: "8px", textAlign: "left", backgroundColor: "#f0f0f0" }}>Key</th>
+                      <th style={{ border: "1px solid #ccc", padding: "8px", textAlign: "left", backgroundColor: "#f0f0f0" }}>Output</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(executionResult).map(([key, value]) => (
+                      <tr key={key}>
+                        <td style={{ border: "1px solid #ccc", padding: "8px", verticalAlign: "top", fontWeight: "bold" }}>
+                          {key}
+                        </td>
+                        <td
+                          style={{
+                            border: "1px solid #ccc",
+                            padding: "8px",
+                            whiteSpace: key === "log" ? "pre-wrap" : "normal",
+                            backgroundColor: key === "log" ? "#000" : "transparent",
+                            color: key === "log" ? "#0f0" : "inherit",
+                            fontFamily: key === "log" ? "monospace" : "inherit",
+                            maxHeight: key === "log" ? "150px" : "auto",
+                            overflowY: key === "log" ? "auto" : "visible",
+                          }}
+                        >
+                          {value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
