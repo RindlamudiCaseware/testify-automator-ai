@@ -1,4 +1,3 @@
-# enrichment_api.py
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from chromadb import PersistentClient
@@ -18,11 +17,10 @@ PLAYWRIGHT = None
 CURRENT_PAGE_NAME: str = "unknown_page"
 
 class LaunchRequest(BaseModel):
-    url: str
-    page_name: str
+    url: str  # ✅ Removed page_name
 
 class CaptureRequest(BaseModel):
-    page_name: str = None
+    pass  # ✅ Removed page_name
 
 class PageNameSetRequest(BaseModel):
     page_name: str
@@ -31,23 +29,14 @@ async def send_enrichment_requests(page_name: str):
     from httpx import AsyncClient
     async with AsyncClient() as client:
         await client.post("http://localhost:8001/set-current-page-name", json={"page_name": page_name})
-        resp = await client.post("http://localhost:8001/capture-dom-from-client", json={"page_name": page_name})
+        resp = await client.post("http://localhost:8001/capture-dom-from-client", json={})
         return resp.json()
 
 @router.post("/launch-browser")
 async def launch_browser(req: LaunchRequest):
     global PLAYWRIGHT, BROWSER, PAGE
 
-    normalized_page_name = normalize_page_name(req.page_name)
-    print(f"normalized_page_name: {normalized_page_name}")
-
     try:
-        records = collection.get(where={"page_name": normalized_page_name}, include=["metadatas"])
-        if not records.get("metadatas") or len(records["metadatas"]) == 0:
-            raise HTTPException(status_code=400, detail=f"❌ No OCR data found for page_name '{normalized_page_name}'.")
-
-        print(f"[DEBUG] ✅ Found {len(records['metadatas'])} OCR records for page_name: {normalized_page_name}")
-
         PLAYWRIGHT = await async_playwright().start()
         BROWSER = await PLAYWRIGHT.chromium.launch(headless=False, slow_mo=100)
         PAGE = await BROWSER.new_page()
@@ -72,10 +61,7 @@ async def launch_browser(req: LaunchRequest):
             async function loadAvailablePages() {
                 try {
                     const res = await fetch('http://localhost:8001/available-pages');
-                    console.log('result',res)
                     const data = await res.json();
-                    console.log('data',data)
-                    alert("data",data)
                     const dropdown = document.getElementById('pageDropdown');
                     dropdown.innerHTML = "";
                     for (const page of data.pages) {
@@ -112,9 +98,7 @@ async def launch_browser(req: LaunchRequest):
         """)
 
         return {
-            "message": f"✅ Browser launched and navigated to {req.url}. Press Alt+E to enrich any page.",
-            "ocr_records_found": len(records["metadatas"]),
-            "page_name": normalized_page_name
+            "message": f"✅ Browser launched and navigated to {req.url}. Press Alt+E to enrich any page."
         }
 
     except Exception as e:
@@ -129,10 +113,10 @@ async def set_page_name(req: PageNameSetRequest):
     return {"message": f"✅ Page name set to: {CURRENT_PAGE_NAME}"}
 
 @router.post("/capture-dom-from-client")
-async def capture_from_keyboard(data: CaptureRequest):
-    global PAGE, BROWSER
+async def capture_from_keyboard(_: CaptureRequest):
+    global PAGE, BROWSER, CURRENT_PAGE_NAME
     try:
-        page_name = normalize_page_name(data.page_name)
+        page_name = CURRENT_PAGE_NAME
         print(f"page_name: {page_name}")
         if PAGE.is_closed():
             raise HTTPException(status_code=500, detail="❌ Cannot extract. Page is already closed.")
@@ -162,17 +146,9 @@ async def capture_from_keyboard(data: CaptureRequest):
 
 @router.get("/available-pages")
 async def list_page_names():
-    # try:
-    #     records = collection.get()
-    #     page_names = list({meta.get("page_name", "unknown") for meta in records.get("metadatas", [])})
-    #     return {"pages": page_names}
-    # except Exception as e:
-    #     raise HTTPException(status_code=500, detail=str(e))
     try:
         records = collection.get()
-        print("[DEBUG] Full ChromaDB OCR records:", records.get("metadatas", []))  # 👈 Add this
         page_names = list({meta.get("page_name", "unknown") for meta in records.get("metadatas", [])})
-        print("[DEBUG] Extracted Page Names:", page_names)  # 👈 Add this
         return {"pages": page_names}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -197,7 +173,5 @@ async def get_latest_match_result():
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-__all__ = ["router"]
 
 __all__ = ["router"]

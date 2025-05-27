@@ -4,7 +4,6 @@ from fastapi.requests import Request
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apis.image_text_api import router as image_router
-from apis.url_locator_api import router as url_router
 from apis.chroma_debug_api import router as debug_chroma_export_router
 from apis.enrichment_api import router as enrichment_router
 from apis.rag_testcase_runner import router as rag_router
@@ -49,7 +48,6 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 app.include_router(image_router)
-app.include_router(url_router)
 app.include_router(generate_from_story_router)
 app.include_router(enrichment_router)
 app.include_router(rag_router)
