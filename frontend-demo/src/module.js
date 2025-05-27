@@ -17,6 +17,13 @@ const Module = () => {
   const [testCases, setTestCases] = useState([]);
   const [ingestionSuccess, setIngestionSuccess] = useState(false); // ✅ for success message
 
+  const [testCasesGeneratedFromStory, setTestCasesGeneratedFromStory] = useState(null);
+
+  const [executionResult, setExecutionResult] = useState(null);
+  const [loadingExecution, setLoadingExecution] = useState(false);
+
+  const [loadingEnrich, setLoadingEnrich] = useState(false);
+
   const MAX_FILES = 20;
 
   const handleFileUpload = (e) => {
@@ -27,6 +34,39 @@ const Module = () => {
   const handleUserStoryChange = (e) => setUserStory(e.target.value);
   const handleUrlChange = (e) => setUrl(e.target.value);
   const handlePageNameChange = (e) => setPageName(e.target.value);
+
+  // const handleContinue = async () => {
+  //   setLoadingIngestion(true);
+  //   setError("");
+  //   setIngestionSuccess(false);
+
+  //   if (selectedFiles.length === 0) {
+  //     toast("Please upload at least one file.");
+  //     setLoadingIngestion(false);
+  //     return;
+  //   }
+
+  //   const formData = new FormData();
+  //   selectedFiles.forEach((file) => formData.append("file", file));
+
+  //   try {
+  //     const response = await axios.post(
+  //       "http://localhost:8001/upload-image",
+  //       formData,
+  //       { headers: { "Content-Type": "multipart/form-data" } }
+  //     );
+
+  //     if (response.status === 200) {
+  //       toast.success("Files uploaded successfully.");
+  //       setIngestionSuccess(true);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error uploading files:", error);
+  //     toast.error("Error uploading files. Please try again.");
+  //   } finally {
+  //     setLoadingIngestion(false);
+  //   }
+  // };
 
   const handleContinue = async () => {
     let apiUrl = "";
@@ -95,12 +135,73 @@ const Module = () => {
   };
 
   const fetchTestCases = async () => {
-    if (!url) {
-      setError("Please enter a valid URL");
+    if (!userStory || userStory.trim() === "") {
+      setError("Please enter a user story.");
       return;
     }
 
     setLoadingGeneration(true);
+    setError("");
+    setTestCases([]);
+    setTestCasesGeneratedFromStory(null); // updated variable
+
+    try {
+      const response = await axios.post("http://localhost:8001/rag/generate-from-story", {
+        user_story: userStory
+      });
+
+      const data = response.data;
+      setTestCasesGeneratedFromStory(data); // updated variable
+      toast.success("Test case generation successful.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Error generating test cases.");
+    } finally {
+      setLoadingGeneration(false);
+    }
+  };
+
+
+  // const fetchTestCases = async () => {
+  //   if (!url) {
+  //     setError("Please enter a valid URL");
+  //     return;
+  //   }
+
+  //   setLoadingGeneration(true);
+  //   setError("");
+  //   setTestCases([]);
+  //   setFullTestData(null);
+
+  //   try {
+  //     const response = await axios.post("http://localhost:8001/rag/generate-and-run", {
+  //       source_url: url
+  //     });
+
+  //     const data = response.data;
+  //     setFullTestData(data);
+  //     toast.success("Test case generation successful.");
+
+  //   } catch (err) {
+  //     setError(err.response?.data?.message || "Error fetching test cases");
+  //   } finally {
+  //     setLoadingGeneration(false);
+  //   }
+  // };
+
+  const enrichLocaters = async () => {
+    if (!url || url.trim() === "") {
+      setError("Please enter a valid URL");
+      return;
+    }
+
+    try {
+      new URL(url);
+    } catch (_) {
+      setError("Please enter a valid URL format (e.g., https://example.com)");
+      return;
+    }
+
+    setLoadingEnrich(true); // ✅ Use specific loading state
     setError("");
     setTestCases([]);
     setFullTestData(null);
@@ -112,12 +213,28 @@ const Module = () => {
 
       const data = response.data;
       setFullTestData(data);
-      toast.success("Test case generation successful.");
-
+      toast.success("Locater enrichment successful.");
     } catch (err) {
-      setError(err.response?.data?.message || "Error fetching test cases");
+      setError(err.response?.data?.message || "Error enriching locaters");
     } finally {
-      setLoadingGeneration(false);
+      setLoadingEnrich(false); // ✅ Use specific loading state
+    }
+  };
+
+
+  const executeStoryTest = async () => {
+    setLoadingExecution(true); // 👈 use separate loader
+    setError("");
+    setExecutionResult(null);
+
+    try {
+      const response = await axios.post("http://localhost:8001/rag/run-generated-story-test");
+      setExecutionResult(response.data);
+      toast.success("Execution successful.");
+    } catch (err) {
+      setError(err.response?.data?.message || "Error executing story test.");
+    } finally {
+      setLoadingExecution(false); // 👈 stop loader
     }
   };
 
@@ -247,7 +364,7 @@ const Module = () => {
                 {loadingIngestion ? (
                   <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
                 ) : (
-                  "Continue"
+                  "Upload Files"
                 )}
               </button>
 
@@ -270,6 +387,48 @@ const Module = () => {
                   "Generate Test Cases"
                 )}
               </button>
+
+              <button 
+                onClick={enrichLocaters}
+                disabled={loadingEnrich}
+                style={{
+                  backgroundColor: "gray",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "white",
+                  padding: "10px 20px",
+                  minWidth: "180px",
+                  height: "40px"
+                }}
+              >
+                {loadingEnrich ? (
+                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
+                ) : (
+                  "Enrich Locaters"
+                )}
+              </button>
+
+
+              <button 
+                onClick={executeStoryTest}
+                disabled={loadingExecution}
+                style={{
+                  backgroundColor: "#ddd",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "black",
+                  padding: "10px 20px",
+                  minWidth: "180px",
+                  height: "40px"
+                }}
+              > 
+                {loadingExecution ? (
+                  <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
+                ) : (
+                  "Execute"
+                )}
+              </button>
+
             </div>
 
             {/* ✅ Success Message */}
@@ -281,7 +440,18 @@ const Module = () => {
 
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
 
-            {/* Test Case Table remains unchanged */}
+            {/* story test cases diaplay */}
+            {testCasesGeneratedFromStory && (
+              <div style={{ marginTop: "20px", padding: "10px", border: "1px solid #ccc", borderRadius: "10px" }}>
+                <h4>Generated Test Cases:</h4>
+                <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
+                  {JSON.stringify(testCasesGeneratedFromStory, null, 2)}
+                </pre>
+              </div>
+            )}
+
+
+            {/* Test Case Table */}
             {fullTestData && (
               <div style={{ marginTop: "20px" }}>
                 <h3 style={{ marginBottom: "15px", color: "#7857FF", fontWeight: "bold", margin: "10px" }}>Test Case Details</h3>
@@ -318,6 +488,17 @@ const Module = () => {
                 ))}
               </div>
             )}
+
+            {/* Execute test cases */}
+            {executionResult && (
+              <div style={{ marginTop: "20px", padding: "10px", border: "1px solid #ccc", borderRadius: "10px" }}>
+                <h4>Execution Result:</h4>
+                <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>
+                  {JSON.stringify(executionResult, null, 2)}
+                </pre>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
