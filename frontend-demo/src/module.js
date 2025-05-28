@@ -67,72 +67,6 @@ const Module = () => {
     }
   };
 
-  // const handleContinue = async () => {
-  //   let apiUrl = "";
-  //   let data;
-  //   let config = { headers: { "Content-Type": "application/json" } };
-
-  //   setLoadingIngestion(true);
-  //   setError("");
-  //   setIngestionSuccess(false); // ✅ reset on new submission
-
-  //   try {
-  //     if (inputType === "file") {
-  //       if (selectedFiles.length === 0) {
-  //         toast("Please upload at least one file.");
-  //         return;
-  //       }
-
-  //       const formData = new FormData();
-  //       selectedFiles.forEach((file) => formData.append("file", file));
-
-  //       apiUrl = "http://localhost:8001/upload-image";
-  //       data = formData;
-  //       config.headers = { "Content-Type": "multipart/form-data" };
-
-  //     } else if (inputType === "userStory") {
-  //       if (userStory.trim() === "") {
-  //         toast("Please enter a user story.");
-  //         return;
-  //       }
-
-  //       apiUrl = "http://localhost:8001/rag/generate-from-story";
-  //       data = JSON.stringify({ user_story: userStory }); // 👈 match the Pydantic model
-  //       config.headers = { "Content-Type": "application/json" };
-
-
-
-  //     } else if (inputType === "url") {
-  //       if (url.trim() === "") {
-  //         toast("Please enter a correct URL.");
-  //         return;
-  //       }
-
-  //       try {
-  //         new URL(url);
-  //       } catch (_) {
-  //         toast("Please enter a valid URL (e.g., https://example.com)");
-  //         return;
-  //       }
-
-  //       apiUrl = "http://localhost:8001/launch-browser";
-  //       data = JSON.stringify({ url, page_name: pageName });
-  //     }
-
-  //     const response = await axios.post(apiUrl, data, config);
-  //     if (response.status === 200) {
-  //       toast.success("Data sent successfully.");
-  //       setIngestionSuccess(true); // ✅ trigger success message
-  //     }
-
-  //   } catch (error) {
-  //     console.error("Error sending data to the API:", error);
-  //     toast.error("There was an error sending the data.");
-  //   } finally {
-  //     setLoadingIngestion(false);
-  //   }
-  // };
-
   const fetchTestCases = async () => {
     if (!userStory || userStory.trim() === "") {
       setError("Please enter a user story.");
@@ -159,33 +93,6 @@ const Module = () => {
     }
   };
 
-
-  // const fetchTestCases = async () => {
-  //   if (!url) {
-  //     setError("Please enter a valid URL");
-  //     return;
-  //   }
-
-  //   setLoadingGeneration(true);
-  //   setError("");
-  //   setTestCases([]);
-  //   setFullTestData(null);
-
-  //   try {
-  //     const response = await axios.post("http://localhost:8001/rag/generate-and-run", {
-  //       source_url: url
-  //     });
-
-  //     const data = response.data;
-  //     setFullTestData(data);
-  //     toast.success("Test case generation successful.");
-
-  //   } catch (err) {
-  //     setError(err.response?.data?.message || "Error fetching test cases");
-  //   } finally {
-  //     setLoadingGeneration(false);
-  //   }
-  // };
 
   const enrichLocaters = async () => {
   if (!url || url.trim() === "") {
