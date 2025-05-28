@@ -54,6 +54,7 @@ async def launch_browser(req: LaunchRequest):
                     <select id="pageDropdown" style="margin:5px;padding:5px;width:250px;"></select><br/>
                     <button onclick="triggerEnrichment()">Enrich</button>
                     <button onclick="document.getElementById('ocrModal').style.display='none'">Close</button>
+                    <div id="enrichmentMessageBox" style="margin-top:10px;font-weight:bold;color:green;"></div>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -77,15 +78,20 @@ async def launch_browser(req: LaunchRequest):
 
             window.triggerEnrichment = async function() {
                 const pageName = document.getElementById('pageDropdown').value;
-                if (!pageName) return alert("❌ Page name is required.");
+                const messageBox = document.getElementById('enrichmentMessageBox');
+                if (!pageName) {
+                    messageBox.innerText = "❌ Page name is required.";
+                    return;
+                }
                 try {
                     const result = await window.sendEnrichmentRequests(pageName);
                     console.log("✅ Matched:", result);
-                    alert(`✅ Enriched ${result.count} elements`);
+                    messageBox.innerText = `✅ Enriched ${result.count} elements successfully.`;
                 } catch (err) {
-                    alert("❌ Enrichment failed: " + err.message);
+                    messageBox.innerText = "❌ Enrichment failed: " + err.message;
                 }
             };
+
 
             document.addEventListener('keydown', function(e) {
                 if (e.altKey && e.key === 'e') {
