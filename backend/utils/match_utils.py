@@ -47,3 +47,38 @@ def generalize_label(label: str) -> str:
     if "pass" in label or "pwd" in label:
         return "password"
     return label
+
+from sentence_transformers import SentenceTransformer, util
+
+intent_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+# Define common test intents and their typical label meanings
+INTENT_TEMPLATES = {
+    "fill_username": ["username", "user name", "email", "login id"],
+    "fill_password": ["password", "passcode"],
+    "click_login": ["login", "sign in", "submit", "continue"],
+    "click_cart": ["cart", "basket"],
+    "click_checkout": ["checkout", "place order"],
+    "click_continue": ["continue", "next"],
+    "click_finish": ["finish", "complete", "done"],
+    "click_logout": ["logout", "sign out"],
+}
+
+intent_embeddings = {
+    intent: intent_model.encode(labels, convert_to_tensor=True)
+    for intent, labels in INTENT_TEMPLATES.items()
+}
+
+def assign_intent_semantic(label_text: str) -> str:
+    label_embedding = intent_model.encode(label_text, convert_to_tensor=True)
+
+    best_intent = None
+    best_score = -1
+
+    for intent, embeddings in intent_embeddings.items():
+        score = util.pytorch_cos_sim(label_embedding, embeddings).max().item()
+        if score > best_score:
+            best_score = score
+            best_intent = intent
+
+    return best_intent if best_score > 0.6 else None

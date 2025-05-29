@@ -1,7 +1,7 @@
 import os
 from PIL import Image
 from datetime import datetime
-from datetime import datetime
+from utils.match_utils import assign_intent_semantic
 
 def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: str, page_name: str = "page") -> str:
     # Crop the region
@@ -19,15 +19,25 @@ def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: 
     return region_path
 
 
-from datetime import datetime
-
 def build_standard_metadata(element: dict, page_name: str, image_path: str = "", source_url: str = "") -> dict:
+    # Extract label
+    label_text = element.get("label_text") or element.get("text", "")
+    
+    # Auto assign intent if not already set
+    intent = element.get("intent", "")
+    if not intent and label_text:
+        try:
+            intent = assign_intent_semantic(label_text)
+        except Exception as e:
+            print(f"[WARN] Failed to assign intent for '{label_text}': {e}")
+            intent = ""
+
     return sanitize_metadata({
         "id": element.get("id") or element.get("ocr_id") or element.get("element_id", ""),
         "ocr_id": element.get("ocr_id") or element.get("id") or element.get("element_id", ""),
         "page_name": page_name,
-        "text": element.get("text") or element.get("label_text", ""),
-        "label_text": element.get("label_text") or element.get("text", ""),
+        "text": element.get("text") or label_text,
+        "label_text": label_text,
         "x": element.get("x", element.get("boundingBox", {}).get("x", 0)),
         "y": element.get("y", element.get("boundingBox", {}).get("y", 0)),
         "width": element.get("width", element.get("boundingBox", {}).get("width", 0)),
@@ -44,13 +54,11 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         "source_url": source_url,
         "bbox": element.get("bbox", f"{element.get('x', 0)},{element.get('y', 0)},{element.get('width', 0)},{element.get('height', 0)}"),
         "position_relation": element.get("position_relation", {}),
-
-        # Optional DOM-related fields — default if missing
         "tag_name": element.get("tag_name", ""),
         "xpath": element.get("xpath", ""),
         "get_by_text": element.get("get_by_text", ""),
         "get_by_role": element.get("get_by_role", ""),
-        "intent": element.get("intent", ""),
+        "intent": intent,  # ✅ Automatically inferred intent
         "html_snippet": element.get("html_snippet", ""),
         "dom_matched": element.get("dom_matched", False),
     })
