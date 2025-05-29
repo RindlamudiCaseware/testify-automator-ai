@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import axios from "axios";
 import "react-toastify/dist/ReactToastify.css";
+import IconNav from "./icons";
 
 const Module = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [userStory, setUserStory] = useState("");
   const [url, setUrl] = useState("");
-  const [pageName, setPageName] = useState("");
   const [inputType, setInputType] = useState("file");
 
   const [fullTestData, setFullTestData] = useState(null);
@@ -159,12 +159,17 @@ const Module = () => {
           </div>
         </div>
 
-        <div className="col-xl-12 m-5 mt-5">
+        <div className="col-xl-12 m-5 mt-5 mb-0">
           <h1 style={{ color: "#7857FF", fontSize: "28px" }}>
             AI-Powered Test Automation
           </h1>
           <p>Create, store, execute, and analyze automated tests with the power of AI.</p>
         </div>
+
+        <div>
+            <IconNav/>
+        </div>
+
 
         <div className="col-xl-12 m-5 mt-0" style={{ backgroundColor: "white", borderRadius: "5px", width: "92vw" }}>
           <div className="m-4">
