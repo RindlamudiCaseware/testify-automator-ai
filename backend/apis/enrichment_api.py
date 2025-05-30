@@ -42,7 +42,7 @@ async def launch_browser(req: LaunchRequest):
         PAGE = await BROWSER.new_page()
         await PAGE.goto(req.url)
         await PAGE.expose_function("sendEnrichmentRequests", send_enrichment_requests)
-
+        
         await PAGE.evaluate("""
         if (!window._ocrShortcutRegistered) {
             window._ocrShortcutRegistered = true;
@@ -81,17 +81,31 @@ async def launch_browser(req: LaunchRequest):
                 const messageBox = document.getElementById('enrichmentMessageBox');
                 if (!pageName) {
                     messageBox.innerText = "❌ Page name is required.";
+                    messageBox.style.color = "red";
                     return;
                 }
+
+                // ✅ Clear and show loading message
+                messageBox.innerText = "⏳ Enrichment in progress...";
+                messageBox.style.color = "blue";
+                messageBox.offsetHeight; // ✅ Force reflow
+
                 try {
                     const result = await window.sendEnrichmentRequests(pageName);
                     console.log("✅ Matched:", result);
-                    messageBox.innerText = `✅ Enriched ${result.count} elements successfully.`;
+
+                    if (result.count === 0) {
+                        messageBox.innerText = "❌ Enrichment failed: No elements matched.";
+                        messageBox.style.color = "red";
+                    } else {
+                        messageBox.innerText = `✅ Enriched ${result.count} elements successfully.`;
+                        messageBox.style.color = "green";
+                    }
                 } catch (err) {
                     messageBox.innerText = "❌ Enrichment failed: " + err.message;
+                    messageBox.style.color = "red";
                 }
             };
-
 
             document.addEventListener('keydown', function(e) {
                 if (e.altKey && e.key === 'e') {
@@ -102,6 +116,7 @@ async def launch_browser(req: LaunchRequest):
             });
         }
         """)
+
 
         return {
             "message": f"✅ Browser launched and navigated to {req.url}. Press Alt+E to enrich any page."

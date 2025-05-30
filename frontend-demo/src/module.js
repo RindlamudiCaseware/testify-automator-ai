@@ -6,7 +6,8 @@ import IconNav from "./icons";
 
 const Module = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [userStory, setUserStory] = useState("");
+  const [userStory , setUserStory] = useState(["", ""])
+  const [userStories, setUserStories] = useState(["", ""]); // two stories
   const [url, setUrl] = useState("");
   const [inputType, setInputType] = useState("file");
 
@@ -23,6 +24,8 @@ const Module = () => {
   const [loadingExecution, setLoadingExecution] = useState(false);
 
   const [loadingEnrich, setLoadingEnrich] = useState(false);
+
+  const [userStoriesInput, setUserStoriesInput] = useState("");
 
   const MAX_FILES = 20;
 
@@ -68,30 +71,43 @@ const Module = () => {
   };
 
   const fetchTestCases = async () => {
-    if (!userStory || userStory.trim() === "") {
-      setError("Please enter a user story.");
+  if (!userStoriesInput || userStoriesInput.trim() === "") {
+    setError("Please enter at least one user story.");
+    return;
+  }
+
+  try {
+    setLoadingGeneration(true);
+    setError("");
+
+    // ✅ Extract stories wrapped in double quotes
+    const stories = userStoriesInput
+      .match(/"([^"]+)"/g)  // Match strings wrapped in double quotes
+      ?.map(s => s.slice(1, -1).trim())  // Remove quotes and trim
+      .filter(s => s.length > 0) || [];
+
+    if (stories.length === 0) {
+      setError("Please enter at least one valid quoted user story.");
+      setLoadingGeneration(false);
       return;
     }
 
-    setLoadingGeneration(true);
-    setError("");
-    setTestCases([]);
-    setTestCasesGeneratedFromStory(null); // updated variable
+    const response = await axios.post("http://localhost:8001/rag/generate-from-story", {
+      user_story: stories
+    });
 
-    try {
-      const response = await axios.post("http://localhost:8001/rag/generate-from-story", {
-        user_story: userStory
-      });
+    setTestCasesGeneratedFromStory(response.data.results);
+    toast.success("Test case generation successful.");
+  } catch (err) {
+    console.error(err);
+    setError(err.response?.data?.message || "Error generating test cases.");
+  } finally {
+    setLoadingGeneration(false);
+  }
+};
 
-      const data = response.data;
-      setTestCasesGeneratedFromStory(data); // updated variable
-      toast.success("Test case generation successful.");
-    } catch (err) {
-      setError(err.response?.data?.message || "Error generating test cases.");
-    } finally {
-      setLoadingGeneration(false);
-    }
-  };
+
+
 
 
   const enrichLocaters = async () => {
@@ -266,14 +282,15 @@ const Module = () => {
 
               {inputType === "userStory" && (
                 <div>
-                  <h5 className="mb-3"> Enter user story or requirements </h5>
-                    <textarea
-                    placeholder="As an user, I want to be able to.. so that I can..."
-                    onChange={handleUserStoryChange}
-                    value={userStory}
+                  <h5 className="mb-3">Enter user stories wrapped in quotes, separated by commas</h5>
+                  <textarea
+                    placeholder={`"As a user, I want to log in...", "As an admin, I want to manage users..."`}
+                    onChange={(e) => setUserStoriesInput(e.target.value)}
+                    value={userStoriesInput}
                     className="form-control"
                     style={{ minHeight: "100px", backgroundColor: "#f8f9fc" }}
                   ></textarea>
+
                   <div className="mt-4">
                     <button
                       onClick={fetchTestCases}
@@ -289,7 +306,11 @@ const Module = () => {
                       }}
                     >
                       {loadingGeneration ? (
-                        <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
+                        <div
+                          className="spinner-border spinner-border-sm text-light"
+                          role="status"
+                          style={{ width: "20px", height: "20px" }}
+                        />
                       ) : (
                         "Generate Test Cases"
                       )}
@@ -345,88 +366,91 @@ const Module = () => {
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
 
             {/* story test cases diaplay */}
-            {testCasesGeneratedFromStory && (
-              <div
+            {Array.isArray(testCasesGeneratedFromStory) && testCasesGeneratedFromStory.map((tc, idx) => (            
+              <div key={idx}
+              style={{
+                marginTop: "20px",
+                padding: "15px",
+                border: "1px solid #ccc",
+                borderRadius: "10px",
+                backgroundColor: "#fafafa",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+              }}
+            >
+              <h4 style={{ marginBottom: "15px", color: "#333" }}>
+                Test Case {idx + 1}
+              </h4>
+              <table
                 style={{
-                  marginTop: "20px",
-                  padding: "15px",
-                  border: "1px solid #ccc",
-                  borderRadius: "10px",
-                  backgroundColor: "#fafafa",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                  fontSize: "14px",
+                  color: "#444",
                 }}
               >
-                <h4 style={{ marginBottom: "15px", color: "#333" }}>Generated Test Cases:</h4>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-                    fontSize: "14px",
-                    color: "#444",
-                  }}
-                >
-                  <thead>
-                    <tr>
-                      <th
-                        style={{
-                          border: "1px solid #ccc",
-                          padding: "12px",
-                          textAlign: "left",
-                          backgroundColor: "#e8e8e8",
-                          fontWeight: "600",
-                          width: "50%",
-                        }}
-                      >
-                        Manual Test Cases
-                      </th>
-                      <th
-                        style={{
-                          border: "1px solid #ccc",
-                          padding: "12px",
-                          textAlign: "left",
-                          backgroundColor: "#e8e8e8",
-                          fontWeight: "600",
-                          width: "50%",
-                        }}
-                      >
-                        Automated Test Cases
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td
-                        style={{
-                          border: "1px solid #ccc",
-                          padding: "12px",
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          verticalAlign: "top",
-                          backgroundColor: "#fff",
-                        }}
-                      >
-                        {testCasesGeneratedFromStory.manual_testcase}
-                      </td>
-                      <td
-                        style={{
-                          border: "1px solid #ccc",
-                          padding: "12px",
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-word",
-                          fontFamily: "Consolas, monospace",
-                          fontSize: "13px",
-                          backgroundColor: "#f7f7f7",
-                          verticalAlign: "top",
-                        }}
-                      >
-                        {testCasesGeneratedFromStory.auto_testcase}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
+                <thead>
+                  <tr>
+                    <th
+                      style={{
+                        border: "1px solid #ccc",
+                        padding: "12px",
+                        textAlign: "left",
+                        backgroundColor: "#e8e8e8",
+                        fontWeight: "600",
+                        width: "50%",
+                      }}
+                    >
+                      Manual Test Cases
+                    </th>
+                    <th
+                      style={{
+                        border: "1px solid #ccc",
+                        padding: "12px",
+                        textAlign: "left",
+                        backgroundColor: "#e8e8e8",
+                        fontWeight: "600",
+                        width: "50%",
+                      }}
+                    >
+                      Automated Test Cases
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td
+                      style={{
+                        border: "1px solid #ccc",
+                        padding: "12px",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        verticalAlign: "top",
+                        backgroundColor: "#fff",
+                      }}
+                    >
+                      {tc.manual_testcase}
+                    </td>
+                    <td
+                      style={{
+                        border: "1px solid #ccc",
+                        padding: "12px",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        fontFamily: "Consolas, monospace",
+                        fontSize: "13px",
+                        backgroundColor: "#f7f7f7",
+                        verticalAlign: "top",
+                      }}
+                    >
+                      {tc.auto_testcase}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ))}
+
 
             {/* Test Case Table */}
             {fullTestData && (
