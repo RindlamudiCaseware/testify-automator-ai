@@ -2,28 +2,27 @@ import os
 from PIL import Image
 from datetime import datetime
 from utils.match_utils import assign_intent_semantic
+from services.ocr_type_classifier import classify_ocr_type 
+from services.yolo_detector import detect_ui_elements_yolo
 
-def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: str, page_name: str = "page") -> str:
-    # Crop the region
-    cropped = image.crop((x, y, x + w, y + h))
+def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: str, page_name: str = "page", image_path: str = "") -> str:
+    if image_path and os.path.exists(image_path):
+        try:
+            x, y, w, h = detect_ui_elements_yolo(image_path, (x, y, w, h))
+        except Exception as e:
+            print(f"[YOLO FALLBACK] Using default bbox due to: {e}")
 
-    # Timestamp for uniqueness
     timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-
-    # Build filename with context: page, coords, timestamp
     filename = f"{page_name}_{x}_{y}_{w}_{h}_{timestamp}.png"
     region_path = os.path.join(output_dir, filename)
 
-    # Save image
+    cropped = image.crop((x, y, x + w, y + h))
     cropped.save(region_path)
     return region_path
 
-
 def build_standard_metadata(element: dict, page_name: str, image_path: str = "", source_url: str = "") -> dict:
-    # Extract label
     label_text = element.get("label_text") or element.get("text", "")
     
-    # Auto assign intent if not already set
     intent = element.get("intent", "")
     if not intent and label_text:
         try:
@@ -31,6 +30,14 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         except Exception as e:
             print(f"[WARN] Failed to assign intent for '{label_text}': {e}")
             intent = ""
+
+    # ✅ Run OCR-type classification using the image path
+    ocr_type = ""
+    if image_path and os.path.exists(image_path):
+        try:
+            ocr_type = classify_ocr_type(image_path)
+        except Exception as e:
+            print(f"[WARN] classify_ocr_type failed for '{image_path}': {e}")
 
     return sanitize_metadata({
         "id": element.get("id") or element.get("ocr_id") or element.get("element_id", ""),
@@ -58,14 +65,13 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         "xpath": element.get("xpath", ""),
         "get_by_text": element.get("get_by_text", ""),
         "get_by_role": element.get("get_by_role", ""),
-        "intent": intent,  # ✅ Automatically inferred intent
+        "intent": intent,
         "html_snippet": element.get("html_snippet", ""),
         "dom_matched": element.get("dom_matched", False),
+        "ocr_type": ocr_type  # ✅ Final enrichment
     })
 
-
 def sanitize_metadata(metadata: dict) -> dict:
-    """Ensure all values are primitive types acceptable by ChromaDB."""
     def safe_convert(value):
         if isinstance(value, (str, int, float, bool)):
             return value

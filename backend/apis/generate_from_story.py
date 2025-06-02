@@ -22,6 +22,10 @@ def sanitize_identifier(label: str) -> str:
     label = label.strip('_')
     return label if label else "element"
 
+def clean_method_name(prefix: str, label: str) -> str:
+    identifier = sanitize_identifier(label)
+    return identifier if identifier.startswith(f"{prefix}_") else f"{prefix}_{identifier}"
+
 def infer_base_url_from_page_names(page_names: list[str]) -> str:
     if not page_names:
         return "https://example.com"
@@ -46,41 +50,119 @@ def generate_test_code_from_methods(test_index: int, user_story: str, method_map
             elif method.startswith("click_"):
                 dynamic_steps.append(f"    - Call `{method}()`")
 
-    prompt = f"""
-You are a senior QA automation engineer.
-Generate ONLY a complete end-to-end Playwright test script in Python using Page Object Model (POM).
+    page_method_section = ""
+    for page in page_names:
+        page_method_section += f"\n# {get_class_name(page)}:\n"
+        for method in method_map[page]:
+            page_method_section += f"- def {method}\n"
 
-User Story:
+#     prompt = f"""
+# You are a senior QA automation engineer.
+
+# From the following user story:
+# {story_block}
+
+# Generate all possible Python test functions using Playwright and Page Object Model (POM):
+
+# - minimum One **Positive Test Case**
+# - minimum One **Negative Test Case**
+# - minimum One **Edge Test Case**
+
+# Rules:
+# - Do NOT use any selectors (no page.locator, get_by_text, get_by_role).
+# - Use ONLY the page object methods listed below.
+# - Import from playwright.sync_api: sync_playwright
+# - Instantiate page classes using: ClassName(page)
+# - Launch browser using `sync_playwright()`.
+# - Navigate to site using `page.goto('{site_url}')`.
+# - Wrap the test in try/except, and `print("[PASS]")` or `print("[CRASH]")` on success/failure.
+# - Output sample test functions:
+#   - def test_story_{test_index}_positive():
+#   - def test_story_{test_index}_negative():
+#   - def test_story_{test_index}_edge():
+
+# Page Object Methods:
+# {page_method_section}
+
+# Usage Hints:
+# {chr(10).join(dynamic_steps)}
+
+# Do NOT include markdown or explanations. Output valid, runnable Python only.
+# """
+    prompt = f"""
+You are a senior QA automation engineer with end-to-end intelligence.
+
+Your inputs are:
+- A list of user stories:
 {story_block}
 
-Instructions:
-- 🚫 VERY IMPORTANT: DO NOT redefine or implement any page object class or method.
-- Use ONLY the page object methods listed below.
-- DO NOT use page.locator(), XPath, or CSS selectors.
-- Use sync_playwright() to launch the browser.
-- Instantiate page objects using ClassName(page).
-- Navigate to the site using `page.goto('{site_url}')`
-- Use the methods listed below to automate the flow:
-{chr(10).join(dynamic_steps)}
-- Print "[PASS]" on success or "[CRASH]" on failure
-- Wrap the test in `def test_story_{test_index}():` function
-- Output ONLY valid Python code. No Markdown. No class definitions. No explanations.
+- A set of UI page images (uploaded in any order)  
+- Page object method definitions:
+{page_method_section}
 
-Page Object Methods:
+Your task is to generate a complete Python Playwright test suite using POM, based on the following rules:
+
+---
+
+✅ PAGE INTELLIGENCE:
+
+1. For each image:
+   - Identify the **page type** (e.g., login, inventory, cart, checkout) using filename, visible labels, or logical inference.
+   - Store these pages as part of a sequential flow.
+
+2. If a test involves a page like **checkout**, automatically infer and include:
+   - All **required preceding steps** (e.g., login → inventory → cart → checkout)
+
+3. Build test flows that always follow a **valid screen progression**, even if the user stories start in the middle.
+
+---
+
+✅ TEST GENERATION RULES:
+
+- For each user story:
+  - Generate all meaningful test cases: positive, negative, edge, boundary, validation
+  - Use only available page object methods (DO NOT use selectors)
+  - Reuse steps across pages using: `LoginPage(page)`, `InventoryPage(page)`, etc.
+  - Launch browser via `sync_playwright()`
+  - Navigate to site: `page.goto('{site_url}')`
+
+- Function signature:
+  - `def test_<feature>_<type>_<i>():`  
+  - Wrap all tests in `try/except`, print `[PASS]` on success, `[CRASH]` on failure
+
+---
+
+✅ FILE STRUCTURE:
+
+- Group test cases by **feature**
+- Output file: `/tests/test_<feature>.py`
+
+---
+
+🚫 DO NOT:
+- Use any selectors (no page.locator, get_by_text, etc.)
+- Include markdown or explanation
+- Use hardcoded assumptions — derive steps based on image sequence and story logic
+
+✅ ADDITIONAL USAGE HINTS:
+{chr(10).join(dynamic_steps)}
 """
-    for page in page_names:
-        prompt += f"\n# {get_class_name(page)}:\n"
-        for method in method_map[page]:
-            prompt += f"- def {method}\n"
+
 
     result = client.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=2048
+        max_tokens=4096
     )
 
     test_code = result.choices[0].message.content.strip()
     test_code = re.sub(r"```python|```", "", test_code).strip()
+
+    # Clean known invalid patterns from GPT output
+    test_code = re.sub(r"^\s*Here is.*?:", "", test_code)  # Remove "Here is your code:"
+    test_code = test_code.replace("```", "")
+    test_code = re.sub(r"\n+", "\n", test_code).strip()  # Remove excess blank lines
+
     return test_code
 
 @router.post("/rag/generate-from-story")
@@ -104,18 +186,25 @@ def generate_from_user_story(req: UserStoryRequest):
     for init in [run_folder, pages_dir, tests_dir]:
         (init / "__init__.py").touch()
 
+    debug_lines = []
+    debug_lines.append(f"🎯 Site URL: {site_url}")
     page_names = []
     method_map = {}
     all_metadata = []
 
     for page in filter_all_pages():
+        debug_lines.append(f"\n🔵 Processing Page: {page}")
+        # Fetch fresh metadatas from ChromaDB (ensures ocr_type is present)
+        page_metadatas = collection.get(where={"page_name": page})
         label_entries = [
-            r for r in collection.get(where={"page_name": page}).get("metadatas", [])
+            r for r in page_metadatas.get("metadatas", [])
             if r.get("label_text") and re.search(r'[a-zA-Z]', r.get("label_text"))
         ]
         if not label_entries:
+            debug_lines.append("  ⚠️ No valid label entries found.")
             continue
-        all_metadata.extend(label_entries)
+        all_metadata.extend(page_metadatas["metadatas"])
+
         page_names.append(page)
         class_name = get_class_name(page)
         method_lines = [
@@ -134,27 +223,31 @@ def generate_from_user_story(req: UserStoryRequest):
             if not label:
                 continue
             safe = sanitize_identifier(label)
-            if safe in {"", "the", "and", "all", "with", "of", "wo", "qty", "your", "are"}:
+            if safe in {"", "the", "and", "all", "with", "of", "wo", "qty", "your", "are"} or len(safe) <= 2:
+                debug_lines.append(f"  ⚠️ Skipped label: '{label}' → '{safe}' (too generic or short)")
                 continue
-            if len(safe) <= 2:
-                continue
-            if safe.startswith("click_") or safe.startswith("fill_"):
+
+            intent = entry.get("intent", "").lower()
+            label_text = entry.get("label_text", "")
+            label_lower = label_text.lower()
+
+            if intent.startswith("fill_") or any(k in label_lower for k in ["username", "password", "name", "email", "code", "address", "zip"]):
+                method_name = clean_method_name("fill", label)
                 method_set.add((
-                    f"    def {safe}(self):",
-                    f"        self.page.get_by_label(\"{entry['label_text']}\").click()",
+                    f"    def {method_name}(self, value):",
+                    f"        self.page.get_by_label(\"{label_text}\").fill(value)",
                     ""
                 ))
+                debug_lines.append(f"  ✅ Generated (fill): {method_name}(value)")
             else:
+                method_name = clean_method_name("click", label)
                 method_set.add((
-                    f"    def fill_{safe}(self, value):",
-                    f"        self.page.get_by_label(\"{entry['label_text']}\").fill(value)",
+                    f"    def {method_name}(self):",
+                    f"        self.page.get_by_role(\"button\", name=\"{label_text}\").click()",
                     ""
                 ))
-                method_set.add((
-                    f"    def click_{safe}(self):",
-                    f"        self.page.get_by_label(\"{entry['label_text']}\").click()",
-                    ""
-                ))
+                debug_lines.append(f"  ✅ Generated (click): {method_name}()")
+
         method_list = sorted(method_set)[:10]
         flat_lines = [line for method in method_list for line in method]
         method_lines += flat_lines
@@ -177,16 +270,27 @@ def generate_from_user_story(req: UserStoryRequest):
     test_functions = []
 
     for i, story in enumerate(stories):
+        story_lower = story.lower()
+        if any(w in story_lower for w in ["fail", "invalid", "wrong", "error", "unsuccessful"]):
+            story_type = "Negative"
+        elif any(w in story_lower for w in ["limit", "boundary", "max", "min", "edge"]):
+            story_type = "Edge"
+        else:
+            story_type = "Positive"
+        debug_lines.append(f"\n🟡 Generating test for story {i+1}: '{story}' [{story_type}]")
+
         test_code = generate_test_code_from_methods(i + 1, story, method_map, page_names, site_url)
         test_functions.append(test_code)
         results.append({
-            "manual_testcase": f"### Manual Test Case {i+1}\n\n**Objective**: {story}\n\n1. Navigate to site\n2. {story}\n\n**Expected**: The user completes the flow successfully.",
-            "auto_testcase": test_code
+            "manual_testcase": f"### Manual Test Case {i+1} ({story_type})\n\n**Objective**: {story}\n\n1. Navigate to site\n2. {story}\n\n**Expected**: The user completes the flow successfully.",
+            "auto_testcase": test_code,
+            "story_type": story_type
         })
 
     full_test_code = "\n\n".join(import_lines + test_functions)
     (tests_dir / "test_from_story.py").write_text(full_test_code, encoding="utf-8")
     (logs_dir / "test_output.log").write_text("[SKIPPED] Execution skipped", encoding="utf-8")
+    (logs_dir / "debug.log").write_text("\n".join(debug_lines), encoding="utf-8")
     with open(meta_dir / "metadata.json", "w") as f:
         json.dump({"timestamp": timestamp, "executed": False, "metadata": all_metadata}, f, indent=2)
 

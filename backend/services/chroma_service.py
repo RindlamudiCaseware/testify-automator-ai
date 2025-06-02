@@ -2,6 +2,7 @@ import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 from config.settings import CHROMA_PATH
 from fastapi.concurrency import run_in_threadpool
+from services.ocr_type_classifier import classify_ocr_type
 import logging
 import json
 
@@ -57,6 +58,7 @@ def upsert_text_record(record: dict):
         "healing_success_rate": 0.0,
         "region_image_path": _sanitize_metadata_value(record.get("region_image_path")),
         "locator": _sanitize_metadata_value(record.get("locator")),
+        "ocr_type": classify_ocr_type(record.get("region_image_path", "")),
         "type": "ocr"
     }
 

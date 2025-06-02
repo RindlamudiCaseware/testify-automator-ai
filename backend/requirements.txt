@@ -9,3 +9,5 @@ python-multipart
 bs4
 rapidfuzz
 openai
+torchvision
+ultralytics
