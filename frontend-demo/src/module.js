@@ -7,9 +7,11 @@ import IconNav from "./icons";
 const Module = () => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [userStory , setUserStory] = useState(["", ""])
-  const [userStories, setUserStories] = useState(["", ""]); // two stories
   const [url, setUrl] = useState("");
   const [inputType, setInputType] = useState("file");
+
+  const [userStoriesInput, setUserStoriesInput] = useState("");
+  const [userStoriesPrompt , setUserStoriesPrompt] = useState("");
 
   const [fullTestData, setFullTestData] = useState(null);
   const [loadingIngestion, setLoadingIngestion] = useState(false);
@@ -31,7 +33,6 @@ const Module = () => {
 
   const [loadingEnrich, setLoadingEnrich] = useState(false);
 
-  const [userStoriesInput, setUserStoriesInput] = useState("");
 
   const MAX_FILES = 20;
 
@@ -100,8 +101,10 @@ const Module = () => {
         return;
       }
 
+      // ✅ Send both userStoriesPrompt and stories in the request body
       const response = await axios.post("http://localhost:8001/rag/generate-from-story", {
-        user_story: stories
+        prompt: userStoriesPrompt,
+        user_story: stories,
       });
 
       setTestCasesGeneratedFromStory(response.data.results);
@@ -112,9 +115,11 @@ const Module = () => {
       setError(err.response?.data?.message || "Error generating test cases.");
     } finally {
       setLoadingGeneration(false);
+      setGenerationSuccess(true);
     }
 
-    setGenerationSuccess(true); // after setting test cases
+    console.log("Prompt:", userStoriesPrompt);
+    console.log("User Stories:", userStoriesInput);
   };
 
 
@@ -149,8 +154,8 @@ const Module = () => {
       setError(err.response?.data?.message || "Error enriching locators");
     } finally {
       setLoadingEnrich(false);
+      setEnrichmentSuccess(true); // after enrichment
     }
-    setEnrichmentSuccess(true); // after enrichment
   };
 
 //  for test execution by test cases generated and by URL
@@ -167,8 +172,8 @@ const Module = () => {
       setError(err.response?.data?.message || "Error executing story test.");
     } finally {
       setLoadingExecution(false); // 👈 stop loader
+      setExecutionSuccess(true); // after execution
     }
-    setExecutionSuccess(true); // after execution
   };
 
   return (
@@ -298,6 +303,16 @@ const Module = () => {
 
               {inputType === "userStory" && (
                 <div>
+
+                  <h5 className="mb-3">Enter prompt </h5>
+                  <textarea
+                    placeholder={`Enter Prompt...`}
+                    onChange={(e) => setUserStoriesPrompt(e.target.value)}
+                    value={userStoriesPrompt}
+                    className="form-control"
+                    style={{ minHeight: "100px", backgroundColor: "#f8f9fc" }}
+                  ></textarea>
+
                   <h5 className="mb-3">Enter one or multiple user stories separated by | </h5>
                   <textarea
                     placeholder={`Enter user story 1 |  user story 2 | user.....`}
@@ -378,7 +393,7 @@ const Module = () => {
                 ✅ Success
               </p>
             )}
-
+ 
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
 
             {/* story test cases diaplay */}
