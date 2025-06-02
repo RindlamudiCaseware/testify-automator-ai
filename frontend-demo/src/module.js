@@ -16,7 +16,13 @@ const Module = () => {
   const [loadingGeneration, setLoadingGeneration] = useState(false);
   const [error, setError] = useState("");
   const [testCases, setTestCases] = useState([]);
-  const [ingestionSuccess, setIngestionSuccess] = useState(false); // ✅ for success message
+
+  // icon indication
+  const [ingestionSuccess, setIngestionSuccess] = useState(false);
+  const [generationSuccess, setGenerationSuccess] = useState(false);
+  const [enrichmentSuccess, setEnrichmentSuccess] = useState(false);
+  const [executionSuccess, setExecutionSuccess] = useState(false);
+
 
   const [testCasesGeneratedFromStory, setTestCasesGeneratedFromStory] = useState(null);
 
@@ -29,13 +35,13 @@ const Module = () => {
 
   const MAX_FILES = 20;
 
+  const handleUserStoryChange = (e) => setUserStory(e.target.value);
+  const handleUrlChange = (e) => setUrl(e.target.value);
+
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     setSelectedFiles(files);
   };
-
-  const handleUserStoryChange = (e) => setUserStory(e.target.value);
-  const handleUrlChange = (e) => setUrl(e.target.value);
 
   const handleContinue = async () => {
     setLoadingIngestion(true);
@@ -59,92 +65,95 @@ const Module = () => {
       );
 
       if (response.status === 200) {
-        toast.success("Files uploaded successfully.");
+        toast.success("OCR extracted and stored in chromadB successfully.");
         setIngestionSuccess(true);
+
+        setInputType("userStory");
       }
     } catch (error) {
       console.error("Error uploading files:", error);
-      toast.error("Error uploading files. Please try again.");
-    } finally {
+      toast.error(`Error uploading files: ${error?.message || 'Please try again.'}`);
       setLoadingIngestion(false);
     }
   };
 
+  // for fetching testcases based on story
   const fetchTestCases = async () => {
-  if (!userStoriesInput || userStoriesInput.trim() === "") {
-    setError("Please enter at least one user story.");
-    return;
-  }
-
-  try {
-    setLoadingGeneration(true);
-    setError("");
-
-    // ✅ Extract stories wrapped in double quotes
-    const stories = userStoriesInput
-      .match(/"([^"]+)"/g)  // Match strings wrapped in double quotes
-      ?.map(s => s.slice(1, -1).trim())  // Remove quotes and trim
-      .filter(s => s.length > 0) || [];
-
-    if (stories.length === 0) {
-      setError("Please enter at least one valid quoted user story.");
-      setLoadingGeneration(false);
+    if (!userStoriesInput || userStoriesInput.trim() === "") {
+      setError("Please enter at least one user story.");
       return;
     }
 
-    const response = await axios.post("http://localhost:8001/rag/generate-from-story", {
-      user_story: stories
-    });
+    try {
+      setLoadingGeneration(true);
+      setError("");
 
-    setTestCasesGeneratedFromStory(response.data.results);
-    toast.success("Test case generation successful.");
-  } catch (err) {
-    console.error(err);
-    setError(err.response?.data?.message || "Error generating test cases.");
-  } finally {
-    setLoadingGeneration(false);
-  }
-};
+      // ✅ Split using | and trim each story
+      const stories = userStoriesInput
+        .split("|")
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      if (stories.length === 0) {
+        setError("Please enter at least one valid user story separated by | ");
+        setLoadingGeneration(false);
+        return;
+      }
+
+      const response = await axios.post("http://localhost:8001/rag/generate-from-story", {
+        user_story: stories
+      });
+
+      setTestCasesGeneratedFromStory(response.data.results);
+      toast.success("Test cases generated successfully.");
+      setInputType("url");
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || "Error generating test cases.");
+    } finally {
+      setLoadingGeneration(false);
+    }
+
+    setGenerationSuccess(true); // after setting test cases
+  };
 
 
-
-
-
+  // for enriching locaters by URL
   const enrichLocaters = async () => {
-  if (!url || url.trim() === "") {
-    setError("Please enter a valid URL");
-    return;
-  }
+    if (!url || url.trim() === "") {
+      setError("Please enter a valid URL");
+      return;
+    }
 
-  try {
-    new URL(url);
-  } catch (_) {
-    setError("Please enter a valid URL format (e.g., https://example.com)");
-    return;
-  }
+    try {
+      new URL(url);
+    } catch (_) {
+      setError("Please enter a valid URL format (e.g., https://example.com)");
+      return;
+    }
 
-  setLoadingEnrich(true);
-  setError("");
-  setTestCases([]);
-  setFullTestData(null);
+    setLoadingEnrich(true);
+    setError("");
+    setTestCases([]);
+    setFullTestData(null);
 
-  try {
-    const response = await axios.post("http://localhost:8001/launch-browser", {
-      url: url  // ✅ Correct key matching the backend
-    });
+    try {
+      const response = await axios.post("http://localhost:8001/launch-browser", {
+        url: url  // ✅ Correct key matching the backend
+      });
 
-    const data = response.data;
-    setFullTestData(data);
-    toast.success("Locator enrichment successful.");
-  } catch (err) {
-    setError(err.response?.data?.message || "Error enriching locators");
-  } finally {
-    setLoadingEnrich(false);
-  }
-};
+      const data = response.data;
+      setFullTestData(data);
+      toast.success("Locators enriched successfully");
+    } catch (err) {
+      setError(err.response?.data?.message || "Error enriching locators");
+    } finally {
+      setLoadingEnrich(false);
+    }
+    setEnrichmentSuccess(true); // after enrichment
+  };
 
-
-
+//  for test execution by test cases generated and by URL
   const executeStoryTest = async () => {
     setLoadingExecution(true); // 👈 use separate loader
     setError("");
@@ -159,6 +168,7 @@ const Module = () => {
     } finally {
       setLoadingExecution(false); // 👈 stop loader
     }
+    setExecutionSuccess(true); // after execution
   };
 
   return (
@@ -182,8 +192,14 @@ const Module = () => {
           <p>Create, store, execute, and analyze automated tests with the power of AI.</p>
         </div>
 
+        {/* display Icons */}
         <div>
-            <IconNav/>
+            <IconNav
+              ingestionSuccess={ingestionSuccess}
+              generationSuccess={generationSuccess}
+              enrichmentSuccess={enrichmentSuccess}
+              executionSuccess={executionSuccess}
+            />
         </div>
 
 
@@ -282,9 +298,9 @@ const Module = () => {
 
               {inputType === "userStory" && (
                 <div>
-                  <h5 className="mb-3">Enter user stories wrapped in quotes, separated by commas</h5>
+                  <h5 className="mb-3">Enter one or multiple user stories separated by | </h5>
                   <textarea
-                    placeholder={`"As a user, I want to log in...", "As an admin, I want to manage users..."`}
+                    placeholder={`Enter user story 1 |  user story 2 | user.....`}
                     onChange={(e) => setUserStoriesInput(e.target.value)}
                     value={userStoriesInput}
                     className="form-control"
@@ -367,95 +383,95 @@ const Module = () => {
 
             {/* story test cases diaplay */}
             {Array.isArray(testCasesGeneratedFromStory) && testCasesGeneratedFromStory.map((tc, idx) => (            
-              <div key={idx}
-              style={{
-                marginTop: "20px",
-                padding: "15px",
-                border: "1px solid #ccc",
-                borderRadius: "10px",
-                backgroundColor: "#fafafa",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-              }}
-            >
-              <h4 style={{ marginBottom: "15px", color: "#333" }}>
-                Test Case {idx + 1}
-              </h4>
-              <table
+                <div key={idx}
                 style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-                  fontSize: "14px",
-                  color: "#444",
+                  marginTop: "20px",
+                  padding: "15px",
+                  border: "1px solid #ccc",
+                  borderRadius: "10px",
+                  backgroundColor: "#fafafa",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
                 }}
               >
-                <thead>
-                  <tr>
-                    <th
-                      style={{
-                        border: "1px solid #ccc",
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#e8e8e8",
-                        fontWeight: "600",
-                        width: "50%",
-                      }}
-                    >
-                      Manual Test Cases
-                    </th>
-                    <th
-                      style={{
-                        border: "1px solid #ccc",
-                        padding: "12px",
-                        textAlign: "left",
-                        backgroundColor: "#e8e8e8",
-                        fontWeight: "600",
-                        width: "50%",
-                      }}
-                    >
-                      Automated Test Cases
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td
-                      style={{
-                        border: "1px solid #ccc",
-                        padding: "12px",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        verticalAlign: "top",
-                        backgroundColor: "#fff",
-                      }}
-                    >
-                      {tc.manual_testcase}
-                    </td>
-                    <td
-                      style={{
-                        border: "1px solid #ccc",
-                        padding: "12px",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                        fontFamily: "Consolas, monospace",
-                        fontSize: "13px",
-                        backgroundColor: "#f7f7f7",
-                        verticalAlign: "top",
-                      }}
-                    >
-                      {tc.auto_testcase}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ))}
+                <h4 style={{ marginBottom: "15px", color: "#333" }}>
+                  Generated Test Case : {idx + 1}
+                </h4>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+                    fontSize: "14px",
+                    color: "#444",
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#e8e8e8",
+                          fontWeight: "600",
+                          width: "50%",
+                        }}
+                      >
+                        Manual Test Cases
+                      </th>
+                      <th
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "12px",
+                          textAlign: "left",
+                          backgroundColor: "#e8e8e8",
+                          fontWeight: "600",
+                          width: "50%",
+                        }}
+                      >
+                        Automated Test Cases
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "12px",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          verticalAlign: "top",
+                          backgroundColor: "#fff",
+                        }}
+                      >
+                        {tc.manual_testcase}
+                      </td>
+                      <td
+                        style={{
+                          border: "1px solid #ccc",
+                          padding: "12px",
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          fontFamily: "Consolas, monospace",
+                          fontSize: "13px",
+                          backgroundColor: "#f7f7f7",
+                          verticalAlign: "top",
+                        }}
+                      >
+                        {tc.auto_testcase}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))}
 
 
             {/* Test Case Table */}
             {fullTestData && (
               <div style={{ marginTop: "20px" }}>
-                <h3 style={{ color: "#7857FF", fontWeight: "bold", margin: "10px" }}>
+                <h3 style={{ color: "#333",fontSize:"25px", margin: "10px" }}>
                   Test Case JSON Output
                 </h3>
                 <pre style={{ backgroundColor: "#000", color: "#0f0", padding: "15px", borderRadius: "5px", overflowX: "auto" }}>
@@ -505,7 +521,7 @@ const Module = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
   );
 };
 
