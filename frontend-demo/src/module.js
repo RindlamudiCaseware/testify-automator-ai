@@ -3,9 +3,10 @@ import { ToastContainer, toast } from "react-toastify";
 import axios from "axios";
 import "react-toastify/dist/ReactToastify.css";
 import IconNav from "./icons";
+import ImageDragDrop from "./imagehandles";
 
 const Module = () => {
-  const [selectedFiles, setSelectedFiles] = useState({});
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [userStory , setUserStory] = useState(["", ""])
   const [url, setUrl] = useState("");
   const [inputType, setInputType] = useState("file");
@@ -55,43 +56,42 @@ const Module = () => {
     return;
   }
 
-  const formData = new FormData();
-
-  // Append only files
-  selectedFiles.forEach((file) => {
-    formData.append("images", file);
+  // 🔽 Log order of selected files
+  console.log("📤 Uploading images in the following order:");
+  selectedFiles.forEach((file, index) => {
+    console.log(`${index + 1}. ${file.name}`);
   });
 
-  // Optional: add orders as JSON string (check backend compatibility)
-  formData.append("orders", JSON.stringify(selectedFiles.map((_, i) => i + 1)));
+  const formData = new FormData();
 
-  // Debug log formData entries
-  for (let pair of formData.entries()) {
-    console.log(pair[0], pair[1]);
-  }
+  selectedFiles.forEach((file, index) => {
+    formData.append("images", file); // This ensures order in FormData
+    formData.append("orders", index + 1); // Optional, if backend uses it
+  });
 
   try {
     const response = await axios.post(
       "http://localhost:8001/upload-image",
       formData,
       {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       }
     );
 
     if (response.status === 200) {
-      toast.success("OCR extracted and stored in ChromaDB successfully.");
+      toast.success("✅ OCR extracted and stored in ChromaDB successfully.");
       setIngestionSuccess(true);
       setInputType("userStory");
     }
   } catch (error) {
-    console.error("Error uploading files:", error);
+    console.error("❌ Error uploading files:", error);
     toast.error(`Error uploading files: ${error?.message || "Please try again."}`);
   } finally {
     setLoadingIngestion(false);
   }
 };
-
 
   // for fetching testcases based on story
   const fetchTestCases = async () => {
@@ -291,61 +291,7 @@ const Module = () => {
                   </div>
 
                   {selectedFiles.length > 0 && (
-                    <div className="row mt-4">
-                      {selectedFiles.map((file, index) => (
-                        <div key={index} className="col-3 mb-3" style={{ position: "relative" }}>
-                          {/* Remove button */}
-                          <button
-                            onClick={() =>
-                              setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
-                            }
-                            style={{
-                              position: "absolute",
-                              top: "-10px",
-                              right: "12px",
-                              backgroundColor: "rgba(0,0,0,0.6)",
-                              border: "none",
-                              color: "white",
-                              borderRadius: "50%",
-                              width: "22px",
-                              height: "22px",
-                              cursor: "pointer",
-                              fontWeight: "bold",
-                              lineHeight: "18px",
-                              zIndex: 10,
-                            }}
-                            title="Remove file"
-                            type="button"
-                          >
-                            ×
-                          </button>
-
-                          {/* Index badge */}
-                          <div
-                            style={{
-                              position: "absolute",
-                              top: "-10px",
-                              left: "12px",
-                              backgroundColor: "#7857FF",
-                              color: "white",
-                              padding: "2px 8px",
-                              fontSize: "12px",
-                              borderRadius: "12px",
-                              userSelect: "none",
-                              zIndex: 10,
-                            }}
-                          >
-                            {index + 1}
-                          </div>
-
-                          <div className="card shadow-sm">
-                            <div className="card-body p-2">
-                              <p className="card-text text-truncate">{file.name}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <ImageDragDrop files={selectedFiles} setFiles={setSelectedFiles} />
                   )}
 
                   <div className="mt-4">
@@ -378,7 +324,6 @@ const Module = () => {
                   </div>
                 </>
               )}
-
 
               {inputType === "userStory" && (
                 <div>
