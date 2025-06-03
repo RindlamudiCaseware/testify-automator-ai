@@ -5,7 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import IconNav from "./icons";
 
 const Module = () => {
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState({});
   const [userStory , setUserStory] = useState(["", ""])
   const [url, setUrl] = useState("");
   const [inputType, setInputType] = useState("file");
@@ -45,38 +45,53 @@ const Module = () => {
   };
 
   const handleContinue = async () => {
-    setLoadingIngestion(true);
-    setError("");
-    setIngestionSuccess(false);
+  setLoadingIngestion(true);
+  setError("");
+  setIngestionSuccess(false);
 
-    if (selectedFiles.length === 0) {
-      toast("Please upload at least one file.");
-      setLoadingIngestion(false);
-      return;
-    }
+  if (selectedFiles.length === 0) {
+    toast("Please upload at least one file.");
+    setLoadingIngestion(false);
+    return;
+  }
 
-    const formData = new FormData();
-    selectedFiles.forEach((file) => formData.append("file", file));
+  const formData = new FormData();
 
-    try {
-      const response = await axios.post(
-        "http://localhost:8001/upload-image",
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+  // Append only files
+  selectedFiles.forEach((file) => {
+    formData.append("images", file);
+  });
 
-      if (response.status === 200) {
-        toast.success("OCR extracted and stored in chromadB successfully.");
-        setIngestionSuccess(true);
+  // Optional: add orders as JSON string (check backend compatibility)
+  formData.append("orders", JSON.stringify(selectedFiles.map((_, i) => i + 1)));
 
-        setInputType("userStory");
+  // Debug log formData entries
+  for (let pair of formData.entries()) {
+    console.log(pair[0], pair[1]);
+  }
+
+  try {
+    const response = await axios.post(
+      "http://localhost:8001/upload-image",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
       }
-    } catch (error) {
-      console.error("Error uploading files:", error);
-      toast.error(`Error uploading files: ${error?.message || 'Please try again.'}`);
-      setLoadingIngestion(false);
+    );
+
+    if (response.status === 200) {
+      toast.success("OCR extracted and stored in ChromaDB successfully.");
+      setIngestionSuccess(true);
+      setInputType("userStory");
     }
-  };
+  } catch (error) {
+    console.error("Error uploading files:", error);
+    toast.error(`Error uploading files: ${error?.message || "Please try again."}`);
+  } finally {
+    setLoadingIngestion(false);
+  }
+};
+
 
   // for fetching testcases based on story
   const fetchTestCases = async () => {
@@ -240,8 +255,14 @@ const Module = () => {
             <div style={{ border: "2px solid #f6f6f8", padding: "20px", borderRadius: "5px" }}>
               {inputType === "file" && (
                 <>
-                  <div className="p-4 text-center"
-                    style={{ border: "2px dashed #d6d8e1", borderRadius: "5px", backgroundColor: "#fafbfe", cursor: "pointer" }}
+                  <div
+                    className="p-4 text-center"
+                    style={{
+                      border: "2px dashed #d6d8e1",
+                      borderRadius: "5px",
+                      backgroundColor: "#fafbfe",
+                      cursor: "pointer",
+                    }}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
@@ -254,15 +275,69 @@ const Module = () => {
                     }}
                     onClick={() => document.getElementById("file-upload").click()}
                   >
-                    <i className="bi bi-cloud-arrow-up" style={{ fontSize: "45px", color: "#7857FF" }}></i>
+                    <i
+                      className="bi bi-cloud-arrow-up"
+                      style={{ fontSize: "45px", color: "#7857FF" }}
+                    ></i>
                     <h6 style={{ color: "#8b6ffe" }}>Upload your Test Data</h6>
                     <p>Drag & drop your files here or click to browse</p>
-                    <input id="file-upload" type="file" multiple onChange={handleFileUpload} style={{ display: "none" }} />
+                    <input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      onChange={handleFileUpload}
+                      style={{ display: "none" }}
+                    />
                   </div>
+
                   {selectedFiles.length > 0 && (
                     <div className="row mt-4">
                       {selectedFiles.map((file, index) => (
-                        <div key={index} className="col-3 mb-3">
+                        <div key={index} className="col-3 mb-3" style={{ position: "relative" }}>
+                          {/* Remove button */}
+                          <button
+                            onClick={() =>
+                              setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+                            }
+                            style={{
+                              position: "absolute",
+                              top: "-10px",
+                              right: "12px",
+                              backgroundColor: "rgba(0,0,0,0.6)",
+                              border: "none",
+                              color: "white",
+                              borderRadius: "50%",
+                              width: "22px",
+                              height: "22px",
+                              cursor: "pointer",
+                              fontWeight: "bold",
+                              lineHeight: "18px",
+                              zIndex: 10,
+                            }}
+                            title="Remove file"
+                            type="button"
+                          >
+                            ×
+                          </button>
+
+                          {/* Index badge */}
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: "-10px",
+                              left: "12px",
+                              backgroundColor: "#7857FF",
+                              color: "white",
+                              padding: "2px 8px",
+                              fontSize: "12px",
+                              borderRadius: "12px",
+                              userSelect: "none",
+                              zIndex: 10,
+                            }}
+                          >
+                            {index + 1}
+                          </div>
+
                           <div className="card shadow-sm">
                             <div className="card-body p-2">
                               <p className="card-text text-truncate">{file.name}</p>
@@ -291,15 +366,19 @@ const Module = () => {
                       }}
                     >
                       {loadingIngestion ? (
-                        <div className="spinner-border spinner-border-sm text-light" role="status" style={{ width: "20px", height: "20px" }} />
+                        <div
+                          className="spinner-border spinner-border-sm text-light"
+                          role="status"
+                          style={{ width: "20px", height: "20px" }}
+                        />
                       ) : (
                         "Upload Files"
                       )}
                     </button>
-                    </div>
+                  </div>
                 </>
-                
               )}
+
 
               {inputType === "userStory" && (
                 <div>
