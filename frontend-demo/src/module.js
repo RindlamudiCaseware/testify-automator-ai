@@ -285,9 +285,47 @@ const Module = () => {
                       id="file-upload"
                       type="file"
                       multiple
-                      onChange={handleFileUpload}
+                      onChange={async (e) => {
+                        const inputFiles = Array.from(e.target.files);
+                        let newFiles = [];
+
+                        for (const file of inputFiles) {
+                          if (file.type.startsWith("image/")) {
+                            newFiles.push(file);
+                          } else if (file.name.endsWith(".zip")) {
+                            try {
+                              const JSZip = (await import("jszip")).default;
+                              const zip = await JSZip.loadAsync(file);
+                              for (const zipEntry of Object.values(zip.files)) {
+                                if (
+                                  !zipEntry.dir &&
+                                  /\.(jpe?g|png|gif|bmp|webp)$/i.test(zipEntry.name)
+                                ) {
+                                  const blob = await zipEntry.async("blob");
+                                  const imageFile = new File([blob], zipEntry.name, {
+                                    type: blob.type,
+                                  });
+                                  newFiles.push(imageFile);
+                                }
+                              }
+                            } catch (err) {
+                              toast.error("Failed to extract ZIP file.");
+                            }
+                          } else {
+                            toast.warn(`${file.name} is not a valid image or ZIP file.`);
+                          }
+                        }
+
+                        if (selectedFiles.length + newFiles.length > MAX_FILES) {
+                          toast.error(`Maximum ${MAX_FILES} files allowed.`);
+                          return;
+                        }
+
+                        setSelectedFiles((prev) => [...prev, ...newFiles]);
+                      }}
                       style={{ display: "none" }}
                     />
+
                   </div>
 
                   {selectedFiles.length > 0 && (
