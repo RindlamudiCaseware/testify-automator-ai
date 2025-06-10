@@ -4,8 +4,12 @@ import os
 import math
 from collections import Counter
 
-# Load YOLOv8 model (change to your fine-tuned path when ready)
-model = YOLO("yolov8n.pt")  # Replace with your own model path
+# Load your trained YOLOv8 model (adjust path if needed)
+# Set absolute path to trained model
+model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ml_models_training", "models", "ui_elements_yolov8", "weights", "best.pt"))
+model = YOLO(model_path)
+
+
 
 # Allowed UI types
 ALLOWED_CLASSES = set(model.names.values())  # Accept all class names from the model

@@ -5,6 +5,7 @@ from logic.manual_capture_mode import extract_dom_metadata, match_and_update, ge
 from utils.match_utils import normalize_page_name
 from utils.file_utils import build_standard_metadata
 from playwright.async_api import async_playwright, Page, Browser
+import json
 
 router = APIRouter()
 
@@ -17,10 +18,10 @@ PLAYWRIGHT = None
 CURRENT_PAGE_NAME: str = "unknown_page"
 
 class LaunchRequest(BaseModel):
-    url: str  # ✅ Removed page_name
+    url: str
 
 class CaptureRequest(BaseModel):
-    pass  # ✅ Removed page_name
+    pass
 
 class PageNameSetRequest(BaseModel):
     page_name: str
@@ -30,7 +31,13 @@ async def send_enrichment_requests(page_name: str):
     async with AsyncClient() as client:
         await client.post("http://localhost:8001/set-current-page-name", json={"page_name": page_name})
         resp = await client.post("http://localhost:8001/capture-dom-from-client", json={})
-        return resp.json()
+        json_data = await resp.aread()
+        print("[DEBUG] Response Raw JSON:", json_data)
+        try:
+            return json.loads(json_data)
+        except Exception as e:
+            print("[ERROR] JSON parsing failed:", e)
+            return {"status": "fail", "error": str(e)}
 
 @router.post("/launch-browser")
 async def launch_browser(req: LaunchRequest):
@@ -41,8 +48,15 @@ async def launch_browser(req: LaunchRequest):
         BROWSER = await PLAYWRIGHT.chromium.launch(headless=False, slow_mo=100)
         PAGE = await BROWSER.new_page()
         await PAGE.goto(req.url)
-        await PAGE.expose_function("sendEnrichmentRequests", send_enrichment_requests)
-        
+
+        async def send_enrichment_wrapper(source, page_name):
+            print("[DEBUG] Triggering enrichment for:", page_name)
+            result = await send_enrichment_requests(page_name)
+            print("[DEBUG] Enrichment result:", result)
+            return json.dumps(result)
+
+        await PAGE.expose_binding("sendEnrichmentRequests", send_enrichment_wrapper)
+
         await PAGE.evaluate("""
         if (!window._ocrShortcutRegistered) {
             window._ocrShortcutRegistered = true;
@@ -85,13 +99,13 @@ async def launch_browser(req: LaunchRequest):
                     return;
                 }
 
-                // ✅ Clear and show loading message
                 messageBox.innerText = "⏳ Enrichment in progress...";
                 messageBox.style.color = "blue";
-                messageBox.offsetHeight; // ✅ Force reflow
+                messageBox.offsetHeight;
 
                 try {
-                    const result = await window.sendEnrichmentRequests(pageName);
+                    const resultStr = await window.sendEnrichmentRequests(pageName);
+                    const result = JSON.parse(resultStr);
                     console.log("✅ Matched:", result);
 
                     if (result.count === 0) {
@@ -102,6 +116,7 @@ async def launch_browser(req: LaunchRequest):
                         messageBox.style.color = "green";
                     }
                 } catch (err) {
+                    console.error("Enrichment Error:", err);
                     messageBox.innerText = "❌ Enrichment failed: " + err.message;
                     messageBox.style.color = "red";
                 }
@@ -116,7 +131,6 @@ async def launch_browser(req: LaunchRequest):
             });
         }
         """)
-
 
         return {
             "message": f"✅ Browser launched and navigated to {req.url}. Press Alt+E to enrich any page."
@@ -135,14 +149,15 @@ async def set_page_name(req: PageNameSetRequest):
 
 @router.post("/capture-dom-from-client")
 async def capture_from_keyboard(_: CaptureRequest):
-    global PAGE, BROWSER, CURRENT_PAGE_NAME
+    global PAGE, CURRENT_PAGE_NAME
     try:
         page_name = CURRENT_PAGE_NAME
-        print(f"page_name: {page_name}")
+        print(f"[INFO] Enrichment triggered for: {page_name}")
         if PAGE.is_closed():
             raise HTTPException(status_code=500, detail="❌ Cannot extract. Page is already closed.")
 
         dom_data = await extract_dom_metadata(PAGE, page_name)
+        print("[DEBUG] DOM elements extracted:", len(dom_data))
         ocr_data = collection.get(where={"page_name": page_name})["metadatas"]
         updated_matches = match_and_update(ocr_data, dom_data, collection)
 
