@@ -12,18 +12,22 @@ def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: 
         except Exception as e:
             print(f"[YOLO FALLBACK] Using default bbox due to: {e}")
 
+    # ✅ Clamp bounding box to image dimensions
     x = max(0, min(x, image.width - 1))
     y = max(0, min(y, image.height - 1))
     w = max(1, min(w, image.width - x))
     h = max(1, min(h, image.height - y))
 
+    # Generate file name
     timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
     filename = f"{page_name}_{x}_{y}_{w}_{h}_{timestamp}.png"
     region_path = os.path.join(output_dir, filename)
 
+    # Crop and save
     cropped = image.crop((x, y, x + w, y + h))
     cropped.save(region_path)
     return region_path
+    
     
 def build_standard_metadata(element: dict, page_name: str, image_path: str = "", source_url: str = "") -> dict:
     label_text = element.get("label_text") or element.get("text", "")
@@ -38,11 +42,14 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
 
     ocr_type = element.get("ocr_type", "")
     if not ocr_type and image_path and os.path.exists(image_path):
+    ocr_type = element.get("ocr_type", "")
+    if not ocr_type and image_path and os.path.exists(image_path):
         try:
             ocr_type = classify_ocr_type(image_path)
         except Exception as e:
             print(f"[WARN] classify_ocr_type failed for '{image_path}': {e}")
     ocr_type = ocr_type if ocr_type else "label"
+    unique_name = generate_unique_name(page_name,intent,label_text)
 
     return sanitize_metadata({
         "id": element.get("id") or element.get("ocr_id") or element.get("element_id", ""),
@@ -73,8 +80,13 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         "intent": intent,
         "html_snippet": element.get("html_snippet", ""),
         "dom_matched": element.get("dom_matched", False),
-        "ocr_type": ocr_type  # ✅ Final enrichment
+        "ocr_type": ocr_type,
+        "unique_name":unique_name
     })
+
+def generate_unique_name(page_name: str, intent: str, label_text: str) -> str:
+    label = label_text.lower().strip().replace(" ", "_")
+    return f"{page_name}_{intent}_{label}"
 
 def sanitize_metadata(metadata: dict) -> dict:
     def safe_convert(value):
