@@ -89,3 +89,150 @@ async def process_image(image: Image.Image, filename: str, page_name: Optional[s
             print(f"⚠️ Skipping {filename} entry {unique_id}: {e}")
 
     return results
+
+
+############################ Open AI Logic for Image API ############################
+
+
+from PIL import Image
+from openai import OpenAI
+import os
+import base64
+import uuid
+from dotenv import load_dotenv
+import json
+from datetime import datetime
+
+from config.settings import DATA_PATH
+from utils.file_utils import save_region, build_standard_metadata
+from utils.match_utils import normalize_page_name,assign_intent_semantic
+from services.chroma_service import upsert_text_record  
+
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+PROMPT = """You are an expert computer vision model using OpenAI's capabilities.
+
+Your task is to analyze a given screenshot of a user interface (UI) and extract every visible UI element, accurately identifying its type and intent.
+
+1. Element Extraction:
+   - Extract ALL visible UI text from the image, including:
+     • Input fields (textboxes)
+     • Buttons
+     • Labels (including credentials, instructions)
+     • Dropdowns, checkboxes
+
+2. Element Classification:
+   - For each element, output:
+     • Label text (exact as visible)
+     • Element type (one of: `textbox`, `button`, `label`, `checkbox`, `select`)
+     • Intent (like: `login`, `username`, `password`, `price_label`, `submit`, `add_to_cart`, `password_info`, `username_info`, etc.)
+
+   - For credentials or user types like `standard_user`, `secret_sauce`, assign type as `label` and use intent like `username_info`, `password_info`.
+
+3. Format:
+   - Each element on its own line:
+     <label text> - <element type> - <intent>
+
+4. Rules:
+   - Do NOT rephrase or skip lines.
+   - Preserve punctuation, line breaks.
+   - Traverse from top-left to bottom-right.
+
+5. Only output newline-separated lines like:
+   Username - textbox - login
+   Login - button - login
+   secret_sauce - label - password_info
+"""
+
+async def process_image_gpt(
+    image: Image.Image,
+    filename: str,
+    image_path: str = "",
+    debug_log_path: str = None
+) -> list:
+    
+    page_name = normalize_page_name(filename)
+
+    # Convert image to base64 for OpenAI Vision API
+    with open(image_path, "rb") as f:
+        image_base64 = base64.b64encode(f.read()).decode("utf-8")
+
+    # Call OpenAI Vision API with your prompt
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": PROMPT},
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_base64}"}}
+                ]
+            }
+        ],
+        max_tokens=1500
+    )
+
+    raw_lines = response.choices[0].message.content.strip().splitlines()
+    results = []
+
+    for line in raw_lines:
+        line = line.strip()
+        if not line or " - " not in line:
+            continue
+
+        # Handle both 3-part and 2-part formats
+        parts = line.rsplit(" - ", 2)
+        if len(parts) == 3:
+            label_text, ocr_type, intent = [p.strip() for p in parts]
+            if not intent:
+                intent = assign_intent_semantic(label_text)
+        elif len(parts) == 2:
+            label_text, ocr_type = [p.strip() for p in parts]
+            intent = assign_intent_semantic(label_text)
+        else:
+            continue
+
+        unique_id = str(uuid.uuid4())
+        x, y, w, h = 10, 10, 100, 40  # Dummy values; plug in YOLO here if needed
+
+        region_path = save_region(
+            image, x, y, w, h,
+            os.path.join(DATA_PATH, "regions"),
+            page_name,
+            image_path=image_path
+        )
+
+        element = {
+            "label_text": label_text,
+            "ocr_type": ocr_type,
+            "intent": intent,
+            "x": x,
+            "y": y,
+            "width": w,
+            "height": h,
+            "bbox": f"{x},{y},{w},{h}",
+            "confidence_score": 1.0,
+        }
+
+        metadata = build_standard_metadata(
+            element,
+            page_name,
+            image_path=region_path
+        )
+        metadata["id"] = unique_id
+        metadata["ocr_id"] = unique_id
+        metadata["get_by_text"] = label_text
+
+        try:
+            upsert_text_record(metadata)
+        except Exception as e:
+            print(f"[ERROR] Failed to upsert to ChromaDB for label='{label_text}': {e}")
+
+        if debug_log_path:
+            with open(debug_log_path, "a", encoding="utf-8") as log_file:
+                log_file.write(json.dumps(metadata, ensure_ascii=False) + "\n")
+
+        results.append(metadata)
+
+    return results

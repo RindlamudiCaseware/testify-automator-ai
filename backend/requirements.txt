@@ -9,5 +9,9 @@ python-multipart
 bs4
 rapidfuzz
 openai
+torch
 torchvision
 ultralytics
+scikit-learn
+matplotlib
+tqdm

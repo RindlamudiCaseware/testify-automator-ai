@@ -8,6 +8,7 @@ from apis.chroma_debug_api import router as debug_chroma_export_router
 from apis.enrichment_api import router as enrichment_router
 from apis.rag_testcase_runner import router as rag_router
 from apis.generate_from_story import router as generate_from_story_router
+from apis.generate_from_manual_testcases import router as generate_from_manual_testcase_router
 import sys
 import asyncio
 import os
@@ -69,8 +70,7 @@ app.include_router(generate_from_story_router)
 app.include_router(enrichment_router)
 app.include_router(rag_router)
 app.include_router(debug_chroma_export_router)
-
-# ✅ Start server
+app.include_router(generate_from_manual_testcase_router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=False)

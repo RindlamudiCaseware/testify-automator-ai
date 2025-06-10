@@ -43,6 +43,7 @@ __pycache__/
 # Ignore generated test run folders
 /backend/generated_runs/
 /backend/generated_zips/
+/backend/test_manualcase_*.py
 
 # Bytecode cache
 __pycache__/

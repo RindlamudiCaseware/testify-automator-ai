@@ -1,5 +1,6 @@
 from PIL import Image
 import torch
+import os
 from torchvision import transforms, models
 
 # Define output label map
@@ -11,9 +12,13 @@ _transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-# Load MobileNet (you can fine-tune this later)
-_model = models.mobilenet_v2(pretrained=True)
-_model.classifier[1] = torch.nn.Linear(_model.last_channel, 3)  # 3 classes
+# Load fine-tuned MobileNet from disk (replace path if needed)
+model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "ml_models_training", "models", "mobilenet_v2_ocr.pth"))
+
+
+_model = models.mobilenet_v2(pretrained=False)
+_model.classifier[1] = torch.nn.Linear(_model.last_channel, 3)
+_model.load_state_dict(torch.load(model_path, map_location="cpu"))  # Load weights
 _model.eval()
 
 def classify_ocr_type(image_path: str) -> str:
