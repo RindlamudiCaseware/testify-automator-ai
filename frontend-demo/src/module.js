@@ -141,7 +141,7 @@ const Module = () => {
       console.error(err);
       setError(err.response?.data?.message || "Error generating test cases.");
       setGenerationError(true);    // ❌ Set error
-      setGenerationSuccess(false); // ❌ Ensure success is off
+      setGenerationSuccess(false);
     } finally {
       setLoadingGeneration(false);
     }
