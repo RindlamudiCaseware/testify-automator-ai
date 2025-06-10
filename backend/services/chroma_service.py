@@ -27,7 +27,7 @@ def _sanitize_metadata_value(value):
 
 def upsert_text_record(record: dict):
     print(f"[DEBUG] Upserting OCR record: {record}")
-    bbox_values = record.get('bbox') or [0,0,0,0]
+    bbox_values = record.get('bbox') or [0, 0, 0, 0]
     bbox_str = ",".join(map(str, bbox_values))
 
     metadata = {
@@ -44,7 +44,7 @@ def upsert_text_record(record: dict):
         "y": bbox_values[1],
         "width": bbox_values[2],
         "height": bbox_values[3],
-        "bbox": bbox_str,  # ✅ store bbox as string
+        "bbox": bbox_str,
         "position_relation": "",
         "html_snippet": "",
         "confidence_score": 0.0,
@@ -62,9 +62,8 @@ def upsert_text_record(record: dict):
         "type": "ocr"
     }
 
-    embedding_value = embedding_function([record["text"]])[0]
-
     try:
+        embedding_value = embedding_function([record["text"]])[0]
         collection.upsert(
             documents=[record["text"]],
             metadatas=[metadata],
@@ -87,21 +86,21 @@ def upsert_element_record(record: dict):
         "get_by_text": _sanitize_metadata_value(record.get("get_by_text")),
         "get_by_role": _sanitize_metadata_value(record.get("get_by_role")),
         "xpath": _sanitize_metadata_value(record.get("xpath")),
-        "x": record.get("x") if record.get("x") is not None else 0,
-        "y": record.get("y") if record.get("y") is not None else 0,
-        "width": record.get("width") if record.get("width") is not None else 0,
-        "height": record.get("height") if record.get("height") is not None else 0,
+        "x": record.get("x") or 0,
+        "y": record.get("y") or 0,
+        "width": record.get("width") or 0,
+        "height": record.get("height") or 0,
         "position_relation": _sanitize_metadata_value(record.get("position_relation")),
         "html_snippet": _sanitize_metadata_value(record.get("html_snippet")),
-        "confidence_score": record.get("confidence_score") if record.get("confidence_score") is not None else 0.0,
-        "visibility_score": record.get("visibility_score") if record.get("visibility_score") is not None else 0.0,
-        "locator_stability_score": record.get("locator_stability_score") if record.get("locator_stability_score") is not None else 0.0,
+        "confidence_score": record.get("confidence_score") or 0.0,
+        "visibility_score": record.get("visibility_score") or 0.0,
+        "locator_stability_score": record.get("locator_stability_score") or 0.0,
         "snapshot_id": _sanitize_metadata_value(record.get("snapshot_id")),
         "timestamp": _sanitize_metadata_value(record.get("timestamp")),
         "source_url": _sanitize_metadata_value(record.get("source_url")),
         "used_in_tests": _sanitize_metadata_value(record.get("used_in_tests")),
         "last_tested": _sanitize_metadata_value(record.get("last_tested")),
-        "healing_success_rate": record.get("healing_success_rate") if record.get("healing_success_rate") is not None else 0.0,
+        "healing_success_rate": record.get("healing_success_rate") or 0.0,
         "type": "locator"
     }
 
@@ -120,34 +119,43 @@ def upsert_element_record(record: dict):
         error_logger.warning(f"upsert_element_record failed: {str(e)} | Record: {record}")
 
 def fetch_ocr_entries():
-    results = collection.get(where={"type": "ocr"})
+    try:
+        results = collection.get(where={"type": "ocr"})
+        ocr_entries = []
+        for id_, doc, meta in zip(results["ids"], results["documents"], results["metadatas"]):
+            ocr_entries.append({
+                "id": id_,
+                "text": doc,
+                "page": meta.get("page_name", "")
+            })
 
-    ocr_entries = []
-    for id_, doc, meta in zip(results["ids"], results["documents"], results["metadatas"]):
-        ocr_entries.append({
-            "id": id_,
-            "text": doc,
-            "page": meta.get("page_name", "")
-        })
+        print(f"[FETCH OCR] Found {len(ocr_entries)} OCR entries")
+        for entry in ocr_entries:
+            print(f"  ID: {entry['id']} | Text: {entry['text']} | Page: {entry['page']}")
+        return ocr_entries
+    except Exception as e:
+        error_logger.warning(f"fetch_ocr_entries failed: {str(e)}")
+        return []
 
-    print(f"[FETCH OCR] Found {len(ocr_entries)} OCR entries")
-    for entry in ocr_entries:
-        print(f"  ID: {entry['id']} | Text: {entry['text']} | Page: {entry['page']}")
-    return ocr_entries
 
 def _update_locator_by_text_sync(entry_id: str, locator: str):
-    item = collection.get(ids=[entry_id])
-    doc = item["documents"][0]
-    meta = item["metadatas"][0]
-    meta["locator"] = locator
-    meta["source_type"] = "url"
-    meta_sanitized = {k: _sanitize_metadata_value(v) for k, v in meta.items()}
+    """Synchronously update the locator field for a given record."""
+    try:
+        item = collection.get(ids=[entry_id])
+        doc = item["documents"][0]
+        meta = item["metadatas"][0]
+        meta["locator"] = locator
+        meta["source_type"] = "url"
+        meta_sanitized = {k: _sanitize_metadata_value(v) for k, v in meta.items()}
 
-    collection.upsert(
-        documents=[doc],
-        metadatas=[meta_sanitized],
-        ids=[entry_id]
-    )
+        collection.upsert(
+            documents=[doc],
+            metadatas=[meta_sanitized],
+            ids=[entry_id]
+        )
+    except Exception as e:
+        error_logger.warning(f"_update_locator_by_text_sync failed: {str(e)} | ID: {entry_id}")
+
 
 async def update_locator_by_text(entry_id: str, locator: str):
     await run_in_threadpool(_update_locator_by_text_sync, entry_id, locator)

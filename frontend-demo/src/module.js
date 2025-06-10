@@ -26,6 +26,12 @@ const Module = () => {
   const [enrichmentSuccess, setEnrichmentSuccess] = useState(false);
   const [executionSuccess, setExecutionSuccess] = useState(false);
 
+  const [ingestionError, setIngestionError] = useState(false);
+  const [generationError, setGenerationError] = useState(false);
+  const [enrichmentError, setEnrichmentError] = useState(false);
+  const [executionError, setExecutionError] = useState(false);
+
+
 
   const [testCasesGeneratedFromStory, setTestCasesGeneratedFromStory] = useState(null);
 
@@ -46,52 +52,56 @@ const Module = () => {
   };
 
   const handleContinue = async () => {
-  setLoadingIngestion(true);
-  setError("");
-  setIngestionSuccess(false);
+    setLoadingIngestion(true);
+    setError("");
+    setIngestionSuccess(false); // 🔁 Reset before start
+    setIngestionError(false);   // 🔁 Reset before start
 
-  if (selectedFiles.length === 0) {
-    toast("Please upload at least one file.");
-    setLoadingIngestion(false);
-    return;
-  }
-
-  // 🔽 Log order of selected files
-  console.log("📤 Uploading images in the following order:");
-  selectedFiles.forEach((file, index) => {
-    console.log(`${index + 1}. ${file.name}`);
-  });
-
-  const formData = new FormData();
-
-  selectedFiles.forEach((file, index) => {
-    formData.append("images", file); // This ensures order in FormData
-    formData.append("orders", index + 1); // Optional, if backend uses it
-  });
-
-  try {
-    const response = await axios.post(
-      "http://localhost:8001/upload-image",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    if (response.status === 200) {
-      toast.success("✅ OCR extracted and stored in ChromaDB successfully.");
-      setIngestionSuccess(true);
-      setInputType("userStory");
+    if (selectedFiles.length === 0) {
+      toast("Please upload at least one file.");
+      setLoadingIngestion(false);
+      return;
     }
-  } catch (error) {
-    console.error("❌ Error uploading files:", error);
-    toast.error(`Error uploading files: ${error?.message || "Please try again."}`);
-  } finally {
-    setLoadingIngestion(false);
-  }
-};
+
+    // 🔽 Log order of selected files
+    console.log("📤 Uploading images in the following order:");
+    selectedFiles.forEach((file, index) => {
+      console.log(`${index + 1}. ${file.name}`);
+    });
+
+    const formData = new FormData();
+
+    selectedFiles.forEach((file, index) => {
+      formData.append("images", file);
+      formData.append("orders", index + 1);
+    });
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8001/upload-image",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        toast.success("✅ OCR extracted and stored in ChromaDB successfully.");
+        setIngestionSuccess(true);   // ✅ Mark success
+        setIngestionError(false);    // ✅ Ensure error is false
+        setInputType("userStory");
+      }
+    } catch (error) {
+      console.error("❌ Error uploading files:", error);
+      toast.error(`Error uploading files: ${error?.message || "Please try again."}`);
+      setIngestionError(true);      // ❌ Mark error
+      setIngestionSuccess(false);   // ❌ Ensure success is false
+    } finally {
+      setLoadingIngestion(false);
+    }
+  };
 
   // for fetching testcases based on story
   const fetchTestCases = async () => {
@@ -103,8 +113,9 @@ const Module = () => {
     try {
       setLoadingGeneration(true);
       setError("");
+      setGenerationSuccess(false); // 🔁 Reset before starting
+      setGenerationError(false);   // 🔁 Reset before starting
 
-      // ✅ Split using | and trim each story
       const stories = userStoriesInput
         .split("|")
         .map(s => s.trim())
@@ -116,7 +127,6 @@ const Module = () => {
         return;
       }
 
-      // ✅ Send both userStoriesPrompt and stories in the request body
       const response = await axios.post("http://localhost:8001/rag/generate-from-story", {
         prompt: userStoriesPrompt,
         user_story: stories,
@@ -125,12 +135,15 @@ const Module = () => {
       setTestCasesGeneratedFromStory(response.data.results);
       toast.success("Test cases generated successfully.");
       setInputType("url");
+      setGenerationSuccess(true);  // ✅ Set success
+      setGenerationError(false);   // ✅ Ensure error is off
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Error generating test cases.");
+      setGenerationError(true);    // ❌ Set error
+      setGenerationSuccess(false); // ❌ Ensure success is off
     } finally {
       setLoadingGeneration(false);
-      setGenerationSuccess(true);
     }
 
     console.log("Prompt:", userStoriesPrompt);
@@ -152,26 +165,36 @@ const Module = () => {
       return;
     }
 
+    // 🔁 Reset all related states before starting
     setLoadingEnrich(true);
     setError("");
     setTestCases([]);
     setFullTestData(null);
+    setEnrichmentSuccess(false);
+    setEnrichmentError(false);
 
     try {
       const response = await axios.post("http://localhost:8001/launch-browser", {
-        url: url  // ✅ Correct key matching the backend
+        url: url  // ✅ Key should match backend expectation
       });
 
       const data = response.data;
       setFullTestData(data);
+
+      // ✅ Mark success, ensure error is false
+      setEnrichmentSuccess(true);
+      setEnrichmentError(false);
       toast.success("Locators enriched successfully");
     } catch (err) {
+      // ❌ On failure, mark only error
       setError(err.response?.data?.message || "Error enriching locators");
+      setEnrichmentError(true);
+      setEnrichmentSuccess(false);
     } finally {
       setLoadingEnrich(false);
-      setEnrichmentSuccess(true); // after enrichment
     }
   };
+
 
 //  for test execution by test cases generated and by URL
   const executeStoryTest = async () => {
@@ -182,12 +205,13 @@ const Module = () => {
     try {
       const response = await axios.post("http://localhost:8001/rag/run-generated-story-test");
       setExecutionResult(response.data);
-      toast.success("Execution successful.");
+      toast.success("Execution successfull.");
+      setExecutionSuccess(true); 
     } catch (err) {
       setError(err.response?.data?.message || "Error executing story test.");
+      setExecutionError(true); // after execution
     } finally {
       setLoadingExecution(false); // 👈 stop loader
-      setExecutionSuccess(true); // after execution
     }
   };
 
@@ -216,10 +240,15 @@ const Module = () => {
         <div>
             <IconNav
               ingestionSuccess={ingestionSuccess}
+              ingestionError={ingestionError}
               generationSuccess={generationSuccess}
+              generationError={generationError}
               enrichmentSuccess={enrichmentSuccess}
+              enrichmentError={enrichmentError}
               executionSuccess={executionSuccess}
+              executionError={executionError}
             />
+
         </div>
 
 
@@ -458,7 +487,7 @@ const Module = () => {
  
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
 
-            {/* story test cases diaplay */}
+            {/* story test cases display */}
             {Array.isArray(testCasesGeneratedFromStory) && testCasesGeneratedFromStory.map((tc, idx) => (            
                 <div key={idx}
                 style={{
@@ -524,7 +553,7 @@ const Module = () => {
                       >
                         {tc.manual_testcase}
                       </td>
-                      <td
+                      <td                      
                         style={{
                           border: "1px solid #ccc",
                           padding: "12px",

@@ -9,16 +9,27 @@ import {
 
 const IconNav = ({
   ingestionSuccess,
+  ingestionError,
   generationSuccess,
+  generationError,
   enrichmentSuccess,
+  enrichmentError,
   executionSuccess,
+  executionError,
 }) => {
   const iconRoutes = [
-    { icon: <FaUpload />, label: "Data Ingestion", active: ingestionSuccess },
-    { icon: <FaMagic />, label: "Test Generation", active: generationSuccess },
-    { icon: <FaPlay />, label: "Enriching Database", active: enrichmentSuccess },
-    { icon: <FaCode />, label: "Test Execution", active: executionSuccess },
+    { icon: <FaUpload />, label: "Data Ingestion", success: ingestionSuccess, error: ingestionError },
+    { icon: <FaMagic />, label: "Test Generation", success: generationSuccess, error: generationError },
+    { icon: <FaPlay />, label: "Enriching Database", success: enrichmentSuccess, error: enrichmentError },
+    { icon: <FaCode />, label: "Test Execution", success: executionSuccess, error: executionError },
   ];
+
+  // Helper to get colors based on success/error
+  const getColors = (success, error) => {
+    if (error) return { bg: "#E74444", color: "#fff" };       // red bg, white icon
+    if (success) return { bg: "#7857FF", color: "#fff" };     // green bg, white icon
+    return { bg: "#f0f0f0", color: "grey" };                  // default light gray bg and grey icon
+  };
 
   return (
     <div
@@ -31,53 +42,65 @@ const IconNav = ({
         flexWrap: "wrap",
       }}
     >
-      {iconRoutes.map((item, index) => (
-        <React.Fragment key={index}>
-          <div
-            style={{
-              textDecoration: "none",
-              color: "grey",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              margin: "10px 20px",
-            }}
-          > 
+      {iconRoutes.map((item, index) => {
+        const { bg, color } = getColors(item.success, item.error);
+        return (
+          <React.Fragment key={index}>
             <div
               style={{
-                fontSize: "20px",
-                backgroundColor: item.active ? "#7857FF" : "#f0f0f0",
-                color: item.active ? "#fff" : "grey",
-                padding: "15px",
-                borderRadius: "50%",
-                marginBottom: "8px",
+                textDecoration: "none",
+                color: "grey",
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "center",
-                width: "60px",
-                height: "60px",
-                transition: "background-color 0.3s, color 0.3s",
+                margin: "10px 20px",
               }}
             >
-              {item.icon}
+              <div
+                style={{
+                  fontSize: "20px",
+                  backgroundColor: bg,
+                  color: color,
+                  padding: "15px",
+                  borderRadius: "50%",
+                  marginBottom: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "60px",
+                  height: "60px",
+                  transition: "background-color 0.3s, color 0.3s",
+                  boxShadow:
+                    item.error
+                      ? "#fa0714"
+                      : item.success
+                      ? "#7857FF"
+                      : "none",
+                  cursor: "default",
+                  userSelect: "none",
+                }}
+              >
+                {item.icon}
+              </div>
+              <span style={{ fontSize: "14px", color: "#555" }}>{item.label}</span>
             </div>
-            <span style={{ fontSize: "14px" }}>{item.label}</span>
-          </div>
 
-          {/* Show green arrow if current step is active */}
-          {index !== iconRoutes.length - 1 && (
-            <FaArrowRight
-              style={{
-                color: item.active ? "#7857FF" : "#d1d8e3",
-                fontSize: "25px",
-                width: "40px",
-                margin: "0 10px",
-                transition: "color 0.3s",
-              }}
-            />
-          )}
-        </React.Fragment>
-      ))}
+            {/* Show arrow between icons */}
+            {index !== iconRoutes.length - 1 && (
+              <FaArrowRight
+                style={{
+                  color: (item.success && !item.error) ? "#27AE60" : "#d1d8e3",
+                  fontSize: "25px",
+                  width: "40px",
+                  margin: "0 10px",
+                  transition: "color 0.3s",
+                  userSelect: "none",
+                }}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 };

@@ -56,3 +56,5 @@ __pycache__/
 /backend/data/
 /backend/generated_runs/
 /backend/generated_zips/
+
+venv_test/

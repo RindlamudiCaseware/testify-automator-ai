@@ -12,6 +12,10 @@ import sys
 import asyncio
 import os
 import subprocess
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ✅ Patch Playwright subprocess bug for Python 3.11 on Windows
 if sys.platform == "win32":
@@ -22,14 +26,17 @@ if sys.platform == "win32":
     except Exception as e:
         print("Playwright install failed:", e)
 
+# ✅ FastAPI app initialization
 app = FastAPI(title="AI Test Extractor")
 
+# ✅ Allowed CORS origins
 origins = [
     "http://localhost:3000",
     "https://www.saucedemo.com",
-    "http://localhost:3001"  
+    "http://localhost:3001",
 ]
 
+# ✅ Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -38,20 +45,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ Global exception handler with CORS headers
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     print("❌ Unhandled Exception:")
     traceback.print_exc()
+
+    # You can dynamically set origin if needed; here "*" is used for simplicity
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Credentials": "true",
+    }
+
     return JSONResponse(
         status_code=500,
         content={"detail": str(exc)},
+        headers=headers,
     )
 
+# ✅ Include API routers
 app.include_router(image_router)
 app.include_router(generate_from_story_router)
 app.include_router(enrichment_router)
 app.include_router(rag_router)
 app.include_router(debug_chroma_export_router)
+
+# ✅ Start server
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=False)
