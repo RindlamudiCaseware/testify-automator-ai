@@ -1,189 +1,157 @@
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
-from datetime import datetime
 from pathlib import Path
-import os, re, json
-from services.test_generation_utils import (
-    client, get_class_name, filter_all_pages, collection
-)
-from utils.match_utils import generalize_label
+import re
+import json
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 router = APIRouter()
 
 class UserStoryRequest(BaseModel):
-    user_story: str | list[str] = Field(..., example=["Login and add backpack", "Checkout and complete order"])
+    user_story: str | List[str] = Field(..., example=["Login and add backpack", "Checkout and complete order"])
     prompt: str = Field(..., example="Custom prompt with {story_block}, {page_method_section}, {site_url}, {dynamic_steps}")
-    user_story: str | list[str] = Field(..., example=["Login and add backpack", "Checkout and complete order"])
-    prompt: str = Field(..., example="Custom prompt with {story_block}, {page_method_section}, {site_url}, {dynamic_steps}")
-    site_url: str = Field(default="")
+    site_url: Optional[str] = Field(default="https://www.saucedemo.com")
 
-# Helper functions
-# Helper functions
-def sanitize_identifier(label: str) -> str:
-    label = label.strip().lower()
-    label = re.sub(r'\s+', '_', label)
-    label = re.sub(r'[^a-z0-9_]', '', label)
-    return re.sub(r'_+', '_', label).strip('_')
-    return re.sub(r'_+', '_', label).strip('_')
+def extract_method_names_from_file(file_path):
+    """Extract all function names from a Python file."""
+    method_names = []
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            m = re.match(r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\(", line)
+            if m:
+                method_names.append(m.group(1))
+    return method_names
 
-def clean_method_name(prefix: str, label: str) -> str:
-    identifier = sanitize_identifier(label)
-    return identifier if identifier.startswith(f"{prefix}_") else f"{prefix}_{identifier}"
+def get_all_page_methods(pages_dir):
+    """Get all method names for each page file in /pages."""
+    page_method_map = {}
+    for py_file in Path(pages_dir).glob("*_page_methods.py"):
+        page_name = py_file.stem.replace("_page_methods", "")
+        page_method_map[page_name] = extract_method_names_from_file(py_file)
+    return page_method_map
 
-def infer_base_url_from_page_names(page_names: list[str]) -> str:
-    from collections import Counter
-    if not page_names: return "https://example.com"
-    domains = [re.match(r"([a-zA-Z0-9\-]+)_", name).group(1) for name in page_names if re.match(r"([a-zA-Z0-9\-]+)_", name)]
-    most_common = Counter(domains).most_common(1)[0][0] if domains else "example"
-    if not page_names: return "https://example.com"
-    domains = [re.match(r"([a-zA-Z0-9\-]+)_", name).group(1) for name in page_names if re.match(r"([a-zA-Z0-9\-]+)_", name)]
-    most_common = Counter(domains).most_common(1)[0][0] if domains else "example"
-    return f"https://www.{most_common}.com"
+def next_index(target_dir, pattern="test_{}.py"):
+    """Returns the next index for naming test/log files, e.g., test_1.py, test_2.py."""
+    files = list(target_dir.glob(pattern.format("*")))
+    indices = []
+    for f in files:
+        m = re.match(r".*_(\d+)\.", f.name)
+        if m:
+            indices.append(int(m.group(1)))
+    return max(indices, default=0) + 1
 
-def generate_test_code_from_methods(test_index, user_story, method_map, page_names, site_url, prompt_template, default_username="", default_password="") -> str:
-    escaped_story = user_story.replace('"""', '\"\"\"')
-def generate_test_code_from_methods(test_index, user_story, method_map, page_names, site_url, prompt_template, default_username="", default_password="") -> str:
-    escaped_story = user_story.replace('"""', '\"\"\"')
-    story_block = f'"""{escaped_story}"""'
+# --- LEGACY: Only for future reference (not used, see comments why) ---
+'''
+# If you ever want to regenerate method names from metadata (e.g., for disaster recovery),
+# you could use the commented block below. Not recommended for test codegen,
+# as it may cause a mismatch between code and prompt.
+def safe(s):
+    return re.sub(r'\W+', '_', s.lower()).strip('_')
+def build_method(entry):
+    # ...your old build_method implementation...
+    pass
+'''
 
-    dynamic_steps = []
-    for methods in method_map.values():
-    for methods in method_map.values():
-        for method in methods:
-            if method.startswith("fill_"):
-                dynamic_steps.append(f"    - Call `{method}(\"<{method.replace('fill_', '')}>\")`")
-                dynamic_steps.append(f"    - Call `{method}(\"<{method.replace('fill_', '')}>\")`")
-            elif method.startswith("click_"):
-                dynamic_steps.append(f"    - Call `{method}()`")
+@router.post("/rag/generate-from-story")
+def generate_from_user_story(req:UserStoryRequest):
+    """
+    Generate test cases using only the real, implemented methods from /generated_runs/pages.
+    Each run will produce a new test_N.py and logs_N.log.
+    Metadata is only generated if not already present.
+    """
+    run_folder = Path("generated_runs")
+    pages_dir = run_folder / "pages"
+    tests_dir = run_folder / "tests"
+    logs_dir = run_folder / "logs"
+    meta_dir = run_folder / "metadata"
 
+    for d in [tests_dir, logs_dir, meta_dir]:
+        d.mkdir(parents=True, exist_ok=True)
+    for d in [tests_dir]:
+        (d / "__init__.py").touch()
+
+    # Use real, implemented method names:
+    method_map = get_all_page_methods(pages_dir)
+    page_names = list(method_map.keys())
+
+    # Compose page_method_section for the prompt:
     page_method_section = ""
     for page in page_names:
-        page_method_section += f"\n# {get_class_name(page)}:\n"
+        page_method_section += f"\n# {page}:\n"
         for method in method_map[page]:
             page_method_section += f"- def {method}\n"
 
-    prompt = prompt_template.format(
-        story_block=user_story,
-        page_method_section=page_method_section,
-        page_names=page_names,
-        site_url=site_url,
-        default_username=default_username,
-        default_password=default_password,
-        dynamic_steps_joined="\n".join(dynamic_steps)
-    )
+    # Compose imports for the test script:
+    import_lines = ["from playwright.sync_api import sync_playwright"] + [
+        f"from pages.{page}_page_methods import *" for page in page_names
+    ]
 
-
-    if "standard_user" in default_username.lower():
-        prompt += "\n\nNote: Use credentials 'standard_user' and 'secret_sauce' for login."
-    prompt = prompt_template.format(
-        story_block=user_story,
-        page_method_section=page_method_section,
-        page_names=page_names,
-        site_url=site_url,
-        default_username=default_username,
-        default_password=default_password,
-        dynamic_steps_joined="\n".join(dynamic_steps)
-    )
-
-
-    if "standard_user" in default_username.lower():
-        prompt += "\n\nNote: Use credentials 'standard_user' and 'secret_sauce' for login."
-
-    result = client.chat.completions.create(
-        model="gpt-4o",
-        # model="openai/o4-mini",
-        # model="openai/o4-mini",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=4096
-    )
-
-    test_code = result.choices[0].message.content.strip()
-    return re.sub(r"```(?:python)?|^\s*Here is.*?:", "", test_code, flags=re.MULTILINE).strip()
-    return re.sub(r"```(?:python)?|^\s*Here is.*?:", "", test_code, flags=re.MULTILINE).strip()
-
-@router.post("/rag/generate-from-story")
-def generate_from_user_story(req: UserStoryRequest):
     stories = req.user_story if isinstance(req.user_story, list) else [req.user_story]
-    site_url = req.site_url or infer_base_url_from_page_names(filter_all_pages())
-    site_url = req.site_url or infer_base_url_from_page_names(filter_all_pages())
+    site_url = getattr(req, "site_url", "https://www.saucedemo.com")  # Use provided or default
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_folder = Path("generated_runs") / f"story_{timestamp}"
-    pages_dir, tests_dir, logs_dir, meta_dir = [run_folder / name for name in ["pages", "tests", "logs", "metadata"]]
-    for d in [pages_dir, tests_dir, logs_dir, meta_dir]: d.mkdir(parents=True, exist_ok=True)
-    for d in [run_folder, pages_dir, tests_dir]: (d / "__init__.py").touch()
-    
-    # run_folder = Path("generated_runs")
-    # pages_dir = run_folder / "pages"
-    # tests_dir = run_folder / "tests"
-    # tests_dir.mkdir(parents=True, exist_ok=True)
-    # pages_dir.mkdir(parents=True, exist_ok=True)
+    def generate_test_code_from_methods(user_story, method_map, page_names, site_url, prompt_template):
+        dynamic_steps = []
+        for methods in method_map.values():
+            for method in methods:
+                if method.startswith("fill_"):
+                    dynamic_steps.append(f"    - Call `{method}(\"<{method.replace('fill_', '')}>\")`")
+                elif method.startswith("click_"):
+                    dynamic_steps.append(f"    - Call `{method}()`")
+        user_story_clean = user_story.replace('"""', '\\"\\"\\"')
+        story_block = f'"""{user_story_clean}"""'
+        prompt = prompt_template.format(
+            story_block=story_block,
+            page_method_section=page_method_section,
+            page_names=page_names,
+            site_url=site_url,
+            dynamic_steps_joined="\n".join(dynamic_steps),
+        )
+        from services.test_generation_utils import client
+        result = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=4096
+        )
+        test_code = result.choices[0].message.content.strip()
+        return re.sub(r"```(?:python)?|^\s*Here is.*?:", "", test_code, flags=re.MULTILINE).strip()
 
-    page_names, method_map, all_metadata = [], {}, []
-    default_username, default_password = "", ""
+    # --- Index for new test/log files ---
+    test_idx = next_index(tests_dir, "test_{}.py")
+    log_idx = next_index(logs_dir, "logs_{}.log")
 
-    # for page in filter_all_pages():
-    #     page_data = collection.get(where={"page_name": page})
-    #     entries = [r for r in page_data.get("metadatas", []) if r.get("label_text") and re.search(r"[a-zA-Z]", r["label_text"])]
-    #     if not entries: continue
-    #     page_names.append(page)
-    #     all_metadata.extend(entries)
-
-        # class_name = get_class_name(page)
-        # methods = ["from playwright.sync_api import Page", f"class {class_name}:", "    def __init__(self, page):", "        self.page = page", "", "    def navigate_to_site(self):", f"        self.page.goto('{site_url}')", ""]
-
-        # method_set = set()
-        # for entry in entries:
-        #     label = entry.get("intent") or entry.get("label_text", "")
-        #     safe = sanitize_identifier(label)
-        #     if not safe or safe in {"the", "and", "of", "your"} or len(safe) <= 2: continue
-
-        #     intent = entry.get("intent", "").lower()
-        #     label_text = entry.get("label_text", "").lower()
-        #     if "standard_user" in label_text: default_username = "standard_user"
-        #     if "secret_sauce" in label_text: default_password = "secret_sauce"
-
-        #     if "fill" in intent or any(x in label_text for x in ["username", "password", "email", "code"]):
-        #         name = clean_method_name("fill", label)
-        #         method_set.add((f"    def {name}(self, value):", f"        self.page.get_by_label(\"{label}\").fill(value)", ""))
-        #     else:
-        #         name = clean_method_name("click", label)
-        #         method_set.add((f"    def {name}(self):", f"        self.page.get_by_role(\"button\", name=\"{label}\").click()", ""))
-
-        # flat = [line for tup in sorted(method_set)[:10] for line in tup]
-        # methods += flat
-        # (pages_dir / f"{page}_page.py").write_text("\n".join(methods), encoding="utf-8")
-        # method_map[page] = [line.split("(")[0].replace("def ", "").strip() for line in flat if line.startswith("    def ")]
-
-    import_lines = ["from playwright.sync_api import sync_playwright"] + [f"from pages.{page}_page import {get_class_name(page)}" for page in page_names]
-    test_functions, results = [], []
-    import_lines = ["from playwright.sync_api import sync_playwright"] + [f"from pages.{page}_page import {get_class_name(page)}" for page in page_names]
     test_functions, results = [], []
 
     for i, story in enumerate(stories):
-        story_type = "Negative" if any(x in story.lower() for x in ["fail", "invalid"]) else "Edge" if "limit" in story.lower() else "Positive"
-        code = generate_test_code_from_methods(i + 1, story, method_map, page_names, site_url, req.prompt, default_username, default_password)
-        test_functions.append(code)
-        story_type = "Negative" if any(x in story.lower() for x in ["fail", "invalid"]) else "Edge" if "limit" in story.lower() else "Positive"
-        code = generate_test_code_from_methods(i + 1, story, method_map, page_names, site_url, req.prompt, default_username, default_password)
+        user_story_clean = story.replace('"""', '\\"\\"\\"')
+        code = generate_test_code_from_methods(
+            story, method_map, page_names, site_url, req.prompt
+        )
         test_functions.append(code)
         results.append({
-            "manual_testcase": f"### Manual Test Case {i+1} ({story_type})\n\n1. Navigate\n2. {story}\nExpected: Success",
+            "manual_testcase": f"### Manual Test Case {i+1}\n\n1. Navigate\n2. {story}\nExpected: Success",
             "auto_testcase": code,
-            "manual_testcase": f"### Manual Test Case {i+1} ({story_type})\n\n1. Navigate\n2. {story}\nExpected: Success",
-            "auto_testcase": code,
-            "story_type": story_type
         })
 
+    # --- Write files for this run ---
+    test_file = tests_dir / f"test_{test_idx}.py"
+    log_file = logs_dir / f"logs_{log_idx}.log"
 
-    # Write to tests folder as test_{N}.py
-    idx = next_test_index(tests_dir)
-    out_file = tests_dir / f"test_{idx}.py"
-    with open(out_file, "w", encoding="utf-8") as f:
-        f.write_text("\n\n".join(import_lines + test_functions), encoding="utf-8")
+    test_file.write_text("\n\n".join(import_lines + test_functions), encoding="utf-8")
+    log_file.write_text("\n".join(page_names), encoding="utf-8")
 
-    # (tests_dir / "test_from_story.py").write_text("\n\n".join(import_lines + test_functions), encoding="utf-8")
-    # (logs_dir / "debug.log").write_text("\n".join(page_names), encoding="utf-8")
-    # json.dump({"timestamp": timestamp, "executed": False, "metadata": all_metadata}, open(meta_dir / "metadata.json", "w"), indent=2)
+    # --- Generate metadata only once ---
+    meta_file = meta_dir / "metadata.json"
+    if not meta_file.exists():
+        metadata = {
+            "timestamp": test_file.stat().st_mtime,
+            "pages": page_names,
+            "method_map": method_map,
+            "test_files": [str(test_file.name)],
+            "log_files": [str(log_file.name)],
+        }
+        json.dump(metadata, open(meta_file, "w"), indent=2)
+    else:
+        # Optionally, append to test_files/log_files in metadata if you want a full history
+        pass
 
-    return {"results": results}
+    return {"results": results, "test_file": str(test_file), "log_file": str(log_file)}
