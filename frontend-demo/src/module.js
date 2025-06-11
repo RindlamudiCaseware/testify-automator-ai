@@ -52,56 +52,56 @@ const Module = () => {
   };
 
   const handleContinue = async () => {
-    setLoadingIngestion(true);
-    setError("");
-    setIngestionSuccess(false); // 🔁 Reset before start
-    setIngestionError(false);   // 🔁 Reset before start
+  setLoadingIngestion(true);
+  setError("");
+  setIngestionSuccess(false);
+  setIngestionError(false);
 
-    if (selectedFiles.length === 0) {
-      toast("Please upload at least one file.");
-      setLoadingIngestion(false);
-      return;
-    }
+  if (selectedFiles.length === 0) {
+    toast("Please upload at least one file.");
+    setLoadingIngestion(false);
+    return;
+  }
 
-    // 🔽 Log order of selected files
-    console.log("📤 Uploading images in the following order:");
-    selectedFiles.forEach((file, index) => {
-      console.log(`${index + 1}. ${file.name}`);
+  // Log file order
+  console.log("📤 Uploading images in the following order:");
+  selectedFiles.forEach((file, index) => {
+    console.log(`${index + 1}. ${file.name}`);
+  });
+
+  const formData = new FormData();
+
+  // Append files
+  selectedFiles.forEach((file) => {
+    formData.append("images", file);
+  });
+
+  const orderedImageNames = selectedFiles.map(file => file.name);
+  formData.append("ordered_images", JSON.stringify({ ordered_images: orderedImageNames }));
+
+  try {
+    const response = await axios.post("http://localhost:8001/upload-image", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
 
-    const formData = new FormData();
-
-    selectedFiles.forEach((file, index) => {
-      formData.append("images", file);
-      formData.append("orders", index + 1);
-    });
-
-    try {
-      const response = await axios.post(
-        "http://localhost:8001/upload-image",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        toast.success("✅ OCR extracted and stored in ChromaDB successfully.");
-        setIngestionSuccess(true);   // ✅ Mark success
-        setIngestionError(false);    // ✅ Ensure error is false
-        setInputType("userStory");
-      }
-    } catch (error) {
-      console.error("❌ Error uploading files:", error);
-      toast.error(`Error uploading files: ${error?.message || "Please try again."}`);
-      setIngestionError(true);      // ❌ Mark error
-      setIngestionSuccess(false);   // ❌ Ensure success is false
-    } finally {
-      setLoadingIngestion(false);
+    if (response.status === 200) {
+      toast.success("✅ OCR extracted and stored in ChromaDB successfully.");
+      setIngestionSuccess(true);
+      setIngestionError(false);
+      setInputType("userStory");
     }
-  };
+  } catch (error) {
+    console.error("❌ Error uploading files:", error);
+    toast.error(`Error uploading files: ${error?.message || "Please try again."}`);
+    setIngestionError(true);
+    setIngestionSuccess(false);
+  } finally {
+    setLoadingIngestion(false);
+  }
+};
+
 
   // for fetching testcases based on story
   const fetchTestCases = async () => {
@@ -230,10 +230,10 @@ const Module = () => {
         </div>
 
         <div className="col-xl-12 m-5 mt-5 mb-0">
-          <h1 style={{ color: "#7857FF", fontSize: "28px" }}>
+          <h1 style={{ color: "#7857FF", fontSize: "30px" ,fontWeight:"bold"}}>
             AI-Powered Test Automation
           </h1>
-          <p>Create, store, execute, and analyze automated tests with the power of AI.</p>
+          <p style={{fontSize:"18px"}}>Create, store, execute, and analyze automated tests with the power of AI.</p>
         </div>
 
         {/* display Icons */}
@@ -250,19 +250,19 @@ const Module = () => {
             />
 
         </div>
-
-
+        <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
         <div className="col-xl-12 m-5 mt-0" style={{ backgroundColor: "white", borderRadius: "5px", width: "92vw" }}>
           <div className="m-4">
-            <h4>Data Ingestion</h4>
-            <p style={{ color: "#bbbfc6" }}>
+            <h4 style={{fontWeight:"bold",fontSize:"28px"}}>Data Ingestion</h4>
+            <p style={{ color: "black" }}>
               Provide test requirements through document uploads, user stories, or a web application URL.
             </p>
 
             <div>
               <button className="btn btn-secondary me-4" onClick={() => setInputType("file")}>Upload files</button>
               <button className="btn btn-secondary me-4" onClick={() => setInputType("userStory")}>Enter User Story</button>
-              <button className="btn btn-secondary me-4" onClick={() => setInputType("url")}>Enter URL</button><button 
+              <button className="btn btn-secondary me-4" onClick={() => setInputType("url")}>Enter URL</button>
+              <button 
                 onClick={executeStoryTest}
                 disabled={loadingExecution}
                 className="btn btn-secondary me-4"
@@ -625,6 +625,7 @@ const Module = () => {
             )}
 
           </div>
+        </div>
         </div>
       </div>
       </div>

@@ -24,11 +24,11 @@ const IconNav = ({
     { icon: <FaCode />, label: "Test Execution", success: executionSuccess, error: executionError },
   ];
 
-  // Helper to get colors based on success/error
+  // ✅ Original background color logic
   const getColors = (success, error) => {
-    if (error) return { bg: "#E74444", color: "#fff" };       // red bg, white icon
-    if (success) return { bg: "#7857FF", color: "#fff" };     // green bg, white icon
-    return { bg: "#f0f0f0", color: "grey" };                  // default light gray bg and grey icon
+    if (error) return { bg: "#E74444", color: "#fff" };       // red
+    if (success) return { bg: "#7857FF", color: "#fff" };     // green/purple
+    return { bg: "#f0f0f0", color: "grey" };                  // default gray
   };
 
   return (
@@ -38,7 +38,6 @@ const IconNav = ({
         justifyContent: "space-evenly",
         alignItems: "center",
         padding: "20px 10px",
-        backgroundColor: "#f9f9fb",
         flexWrap: "wrap",
       }}
     >
@@ -48,8 +47,6 @@ const IconNav = ({
           <React.Fragment key={index}>
             <div
               style={{
-                textDecoration: "none",
-                color: "grey",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -58,43 +55,46 @@ const IconNav = ({
             >
               <div
                 style={{
-                  fontSize: "20px",
+                  fontSize: "22px",
                   backgroundColor: bg,
                   color: color,
-                  padding: "15px",
+                  padding: "16px",
                   borderRadius: "50%",
-                  marginBottom: "8px",
+                  marginBottom: "10px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: "60px",
-                  height: "60px",
-                  transition: "background-color 0.3s, color 0.3s",
+                  width: "65px",
+                  height: "65px",
+                  transition: "all 0.3s ease-in-out",
                   boxShadow:
                     item.error
-                      ? "#fa0714"
+                      ? "0 0 12px rgba(231,68,68,0.5)"
                       : item.success
-                      ? "#7857FF"
+                      ? "0 0 12px rgba(120,87,255,0.5)"
                       : "none",
-                  cursor: "default",
-                  userSelect: "none",
                 }}
               >
                 {item.icon}
               </div>
-              <span style={{ fontSize: "14px", color: "#555" }}>{item.label}</span>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#444",
+                }}
+              >
+                {item.label}
+              </span>
             </div>
 
-            {/* Show arrow between icons */}
             {index !== iconRoutes.length - 1 && (
               <FaArrowRight
                 style={{
-                  color: (item.success && !item.error) ? "#27AE60" : "#d1d8e3",
-                  fontSize: "25px",
-                  width: "40px",
+                  color: item.success && !item.error ? "#7857FF" : "#d1d8e3",
+                  fontSize: "24px",
                   margin: "0 10px",
-                  transition: "color 0.3s",
-                  userSelect: "none",
+                  transition: "color 0.3s ease-in-out",
                 }}
               />
             )}
