@@ -69,7 +69,7 @@ const IconNav = ({
                   transition: "all 0.3s ease-in-out",
                   boxShadow:
                     item.error
-                      ? "0 0 12px rgba(231,68,68,0.5)"
+                      ? "0 0 12px rgba(234, 13, 13, 0.96)"
                       : item.success
                       ? "0 0 12px rgba(120,87,255,0.5)"
                       : "none",
