@@ -8,6 +8,7 @@
     "bootstrap": "^5.3.6",
     "bootstrap-icons": "^1.13.1",
     "cra-template": "1.2.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.511.0",
     "pip": "^0.0.1",
     "python": "^0.0.4",

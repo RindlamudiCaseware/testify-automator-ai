@@ -8,17 +8,17 @@ from apis.chroma_debug_api import router as debug_chroma_export_router
 from apis.enrichment_api import router as enrichment_router
 from apis.rag_testcase_runner import router as rag_router
 from apis.generate_from_story import router as generate_from_story_router
+from apis.generate_page_methods import router as generate_page_methods_router
 from apis.generate_from_manual_testcases import router as generate_from_manual_testcase_router
+from apis.generate_testcases_from_methods import router as generate_test_code_from_methods_router
 import sys
 import asyncio
 import os
 import subprocess
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
-# ✅ Patch Playwright subprocess bug for Python 3.11 on Windows
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "0"
@@ -30,14 +30,15 @@ if sys.platform == "win32":
 # ✅ FastAPI app initialization
 app = FastAPI(title="AI Test Extractor")
 
-# ✅ Allowed CORS origins
+
 origins = [
     "http://localhost:3000",
     "https://www.saucedemo.com",
     "http://localhost:3001",
+    "http://localhost:3001",
 ]
 
-# ✅ Add CORS middleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -52,7 +53,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     print("❌ Unhandled Exception:")
     traceback.print_exc()
 
-    # You can dynamically set origin if needed; here "*" is used for simplicity
+    
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Credentials": "true",
@@ -61,6 +62,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={"detail": str(exc)},
+        headers=headers,
         headers=headers,
     )
 
@@ -71,6 +73,9 @@ app.include_router(enrichment_router)
 app.include_router(rag_router)
 app.include_router(debug_chroma_export_router)
 app.include_router(generate_from_manual_testcase_router)
+app.include_router(generate_page_methods_router)
+app.include_router(generate_test_code_from_methods_router)
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=False)

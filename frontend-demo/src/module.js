@@ -57,11 +57,11 @@ const Module = () => {
   setIngestionSuccess(false);
   setIngestionError(false);
 
-  if (selectedFiles.length === 0) {
-    toast("Please upload at least one file.");
-    setLoadingIngestion(false);
-    return;
-  }
+    if (selectedFiles.length === 0) {
+      toast("Please upload at least one file.");
+      setLoadingIngestion(false);
+      return;
+    }
 
   // Log file order
   console.log("📤 Uploading images in the following order:");
@@ -69,7 +69,7 @@ const Module = () => {
     console.log(`${index + 1}. ${file.name}`);
   });
 
-  const formData = new FormData();
+    const formData = new FormData();
 
   // Append files
   selectedFiles.forEach((file) => {

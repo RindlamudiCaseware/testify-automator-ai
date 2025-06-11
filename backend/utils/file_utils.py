@@ -29,6 +29,7 @@ def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: 
     return region_path
     
     
+    
 def build_standard_metadata(element: dict, page_name: str, image_path: str = "", source_url: str = "") -> dict:
     label_text = element.get("label_text") or element.get("text", "")
     
@@ -42,7 +43,7 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
 
     ocr_type = element.get("ocr_type", "")
     if not ocr_type and image_path and os.path.exists(image_path):
-    ocr_type = element.get("ocr_type", "")
+        ocr_type = element.get("ocr_type", "")
     if not ocr_type and image_path and os.path.exists(image_path):
         try:
             ocr_type = classify_ocr_type(image_path)

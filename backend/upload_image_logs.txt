@@ -1,0 +1,6 @@
+2025-06-10 14:58:12,653 - DEBUG - 📷 Processing image: saucedemo_cart.png
+2025-06-10 14:58:39,653 - DEBUG - 📷 Processing image: saucedemo_checkout_info.png
+2025-06-10 14:58:45,989 - DEBUG - 📷 Processing image: saucedemo_checkout_overview.png
+2025-06-10 14:58:57,430 - DEBUG - 📷 Processing image: saucedemo_inventory.png
+2025-06-10 14:59:18,803 - DEBUG - 📷 Processing image: saucedemo_login.png
+2025-06-10 14:59:43,577 - INFO - 📄 Ordered images logged to data/image_order.json
