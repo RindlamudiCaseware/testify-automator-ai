@@ -59,3 +59,4 @@ __pycache__/
 /backend/generated_zips/
 
 venv_test/
+/backend/upload_image_logs.txt
