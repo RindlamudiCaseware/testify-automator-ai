@@ -215,8 +215,6 @@ const Module = () => {
 
       const data = await response.json();
       console.log("API Response:", data);
-
-      // Extract page names from the keys
       const names = Object.keys(data);
       setPageNames(names);
     } catch (error) {
@@ -488,7 +486,6 @@ const Module = () => {
               )}
             </div>
 
-            {/* ✅ Success Message */}
             {ingestionSuccess && (
               <p style={{ marginTop: "10px", color: "green", fontWeight: "bold" }}>
                 ✅ Success
@@ -498,34 +495,30 @@ const Module = () => {
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
 
             {pageNames.length > 0 && (
-  <div className="mt-4 p-4 border rounded shadow-sm bg-light">
-    <h5 className="mb-3" style={{color:"black"}}>Available Pages:</h5>
-    <ul className="list-group">
-      {pageNames.map((name, idx) => (
-        <li
-          key={idx}
-          className="list-group-item d-flex justify-content-between align-items-center"
-          style={{
-            backgroundColor: "white",
-            borderRadius: "4px",
-            marginBottom: "6px",
-            padding: "8px 12px",
-            fontWeight: "500",
-            color: "#333",
-            border: "1px solid #dee2e6",
-          }}
-        >
-          {name}
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
+              <div className="mt-4 p-4 border rounded shadow-sm bg-light">
+                <h5 className="mb-3" style={{color:"black"}}>Available Pages:</h5>
+                <ul className="list-group">
+                  {pageNames.map((name, idx) => (
+                    <li
+                      key={idx}
+                      className="list-group-item d-flex justify-content-between align-items-center"
+                      style={{
+                        backgroundColor: "white",
+                        borderRadius: "4px",
+                        marginBottom: "6px",
+                        padding: "8px 12px",
+                        fontWeight: "500",
+                        color: "#333",
+                        border: "1px solid #dee2e6",
+                      }}
+                    >
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-
-
-
-            {/* story test cases display */}
             {Array.isArray(testCasesGeneratedFromStory) && testCasesGeneratedFromStory.map((tc, idx) => (            
                 <div key={idx}
                 style={{
