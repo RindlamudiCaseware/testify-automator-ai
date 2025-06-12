@@ -20,7 +20,6 @@ const Module = () => {
   const [error, setError] = useState("");
   const [testCases, setTestCases] = useState([]);
 
-  // icon indication
   const [ingestionSuccess, setIngestionSuccess] = useState(false);
   const [generationSuccess, setGenerationSuccess] = useState(false);
   const [enrichmentSuccess, setEnrichmentSuccess] = useState(false);
@@ -31,8 +30,6 @@ const Module = () => {
   const [enrichmentError, setEnrichmentError] = useState(false);
   const [executionError, setExecutionError] = useState(false);
 
-
-
   const [testCasesGeneratedFromStory, setTestCasesGeneratedFromStory] = useState(null);
 
   const [executionResult, setExecutionResult] = useState(null);
@@ -40,6 +37,7 @@ const Module = () => {
 
   const [loadingEnrich, setLoadingEnrich] = useState(false);
 
+  const [pageNames, setPageNames] = useState([]);
 
   const MAX_FILES = 20;
 
@@ -52,10 +50,10 @@ const Module = () => {
   };
 
   const handleContinue = async () => {
-  setLoadingIngestion(true);
-  setError("");
-  setIngestionSuccess(false);
-  setIngestionError(false);
+    setLoadingIngestion(true);
+    setError("");
+    setIngestionSuccess(false);
+    setIngestionError(false);
 
     if (selectedFiles.length === 0) {
       toast("Please upload at least one file.");
@@ -63,47 +61,44 @@ const Module = () => {
       return;
     }
 
-  // Log file order
-  console.log("📤 Uploading images in the following order:");
-  selectedFiles.forEach((file, index) => {
-    console.log(`${index + 1}. ${file.name}`);
-  });
+    console.log("Uploading images in the following order:");
+    selectedFiles.forEach((file, index) => {
+      console.log(`${index + 1}. ${file.name}`);
+    });
 
     const formData = new FormData();
 
-  // Append files
-  selectedFiles.forEach((file) => {
-    formData.append("images", file);
-  });
-
-  const orderedImageNames = selectedFiles.map(file => file.name);
-  formData.append("ordered_images", JSON.stringify({ ordered_images: orderedImageNames }));
-
-  try {
-    const response = await axios.post("http://localhost:8001/upload-image", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    selectedFiles.forEach((file) => {
+      formData.append("images", file);
     });
 
-    if (response.status === 200) {
-      toast.success("✅ OCR extracted and stored in ChromaDB successfully.");
-      setIngestionSuccess(true);
-      setIngestionError(false);
-      setInputType("userStory");
+    const orderedImageNames = selectedFiles.map(file => file.name);
+    formData.append("ordered_images", JSON.stringify({ ordered_images: orderedImageNames }));
+
+    try {
+      const response = await axios.post("http://localhost:8001/upload-image", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.status === 200) {
+        toast.success("OCR extracted and stored in ChromaDB successfully.");
+        setIngestionSuccess(true);
+        setIngestionError(false);
+        setInputType("userStory");
+      }
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      toast.error(`Error uploading files: ${error?.message || "Please try again."}`);
+      setIngestionError(true);
+      setIngestionSuccess(false);
+    } finally {
+      setLoadingIngestion(false);
     }
-  } catch (error) {
-    console.error("❌ Error uploading files:", error);
-    toast.error(`Error uploading files: ${error?.message || "Please try again."}`);
-    setIngestionError(true);
-    setIngestionSuccess(false);
-  } finally {
-    setLoadingIngestion(false);
-  }
-};
+  };
 
 
-  // for fetching testcases based on story
   const fetchTestCases = async () => {
     if (!userStoriesInput || userStoriesInput.trim() === "") {
       setError("Please enter at least one user story.");
@@ -113,8 +108,8 @@ const Module = () => {
     try {
       setLoadingGeneration(true);
       setError("");
-      setGenerationSuccess(false); // 🔁 Reset before starting
-      setGenerationError(false);   // 🔁 Reset before starting
+      setGenerationSuccess(false); 
+      setGenerationError(false);   
 
       const stories = userStoriesInput
         .split("|")
@@ -135,12 +130,12 @@ const Module = () => {
       setTestCasesGeneratedFromStory(response.data.results);
       toast.success("Test cases generated successfully.");
       setInputType("url");
-      setGenerationSuccess(true);  // ✅ Set success
-      setGenerationError(false);   // ✅ Ensure error is off
+      setGenerationSuccess(true);  
+      setGenerationError(false);  
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Error generating test cases.");
-      setGenerationError(true);    // ❌ Set error
+      setGenerationError(true); 
       setGenerationSuccess(false);
     } finally {
       setLoadingGeneration(false);
@@ -150,14 +145,11 @@ const Module = () => {
     console.log("User Stories:", userStoriesInput);
   };
 
-
-  // for enriching locaters by URL
   const enrichLocaters = async () => {
     if (!url || url.trim() === "") {
       setError("Please enter a valid URL");
       return;
     }
-
     try {
       new URL(url);
     } catch (_) {
@@ -165,7 +157,6 @@ const Module = () => {
       return;
     }
 
-    // 🔁 Reset all related states before starting
     setLoadingEnrich(true);
     setError("");
     setTestCases([]);
@@ -175,18 +166,16 @@ const Module = () => {
 
     try {
       const response = await axios.post("http://localhost:8001/launch-browser", {
-        url: url  // ✅ Key should match backend expectation
+        url: url  
       });
 
       const data = response.data;
       setFullTestData(data);
 
-      // ✅ Mark success, ensure error is false
       setEnrichmentSuccess(true);
       setEnrichmentError(false);
       toast.success("Locators enriched successfully");
     } catch (err) {
-      // ❌ On failure, mark only error
       setError(err.response?.data?.message || "Error enriching locators");
       setEnrichmentError(true);
       setEnrichmentSuccess(false);
@@ -196,9 +185,8 @@ const Module = () => {
   };
 
 
-//  for test execution by test cases generated and by URL
   const executeStoryTest = async () => {
-    setLoadingExecution(true); // 👈 use separate loader
+    setLoadingExecution(true); 
     setError("");
     setExecutionResult(null);
 
@@ -209,9 +197,31 @@ const Module = () => {
       setExecutionSuccess(true); 
     } catch (err) {
       setError(err.response?.data?.message || "Error executing story test.");
-      setExecutionError(true); // after execution
+      setExecutionError(true);
     } finally {
-      setLoadingExecution(false); // 👈 stop loader
+      setLoadingExecution(false);
+    }
+  };
+
+  const handleGenerateMethods = async () => {
+    try {
+      const response = await fetch("http://localhost:8001/rag/generate-page-methods", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json();
+      console.log("API Response:", data);
+
+      // Extract page names from the keys
+      const names = Object.keys(data);
+      setPageNames(names);
+    } catch (error) {
+      console.error("Error fetching page methods:", error);
+      setPageNames([]);
     }
   };
 
@@ -236,7 +246,6 @@ const Module = () => {
           <p style={{fontSize:"18px"}}>Create, store, execute, and analyze automated tests with the power of AI.</p>
         </div>
 
-        {/* display Icons */}
         <div>
             <IconNav
               ingestionSuccess={ingestionSuccess}
@@ -260,6 +269,7 @@ const Module = () => {
 
             <div>
               <button className="btn btn-secondary me-4" onClick={() => setInputType("file")}>Upload files</button>
+              <button className="btn btn-secondary me-4"onClick={handleGenerateMethods}>Generate Methods</button>
               <button className="btn btn-secondary me-4" onClick={() => setInputType("userStory")}>Enter User Story</button>
               <button className="btn btn-secondary me-4" onClick={() => setInputType("url")}>Enter URL</button>
               <button 
@@ -486,6 +496,34 @@ const Module = () => {
             )}
  
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
+
+            {pageNames.length > 0 && (
+  <div className="mt-4 p-4 border rounded shadow-sm bg-light">
+    <h5 className="mb-3" style={{color:"black"}}>Available Pages:</h5>
+    <ul className="list-group">
+      {pageNames.map((name, idx) => (
+        <li
+          key={idx}
+          className="list-group-item d-flex justify-content-between align-items-center"
+          style={{
+            backgroundColor: "white",
+            borderRadius: "4px",
+            marginBottom: "6px",
+            padding: "8px 12px",
+            fontWeight: "500",
+            color: "#333",
+            border: "1px solid #dee2e6",
+          }}
+        >
+          {name}
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+
+
 
             {/* story test cases display */}
             {Array.isArray(testCasesGeneratedFromStory) && testCasesGeneratedFromStory.map((tc, idx) => (            
