@@ -486,13 +486,25 @@ const Module = () => {
               )}
             </div>
 
-            {ingestionSuccess && (
-              <p style={{ marginTop: "10px", color: "green", fontWeight: "bold" }}>
-                ✅ Success
-              </p>
-            )}
- 
             {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
+
+            {ingestionSuccess && (
+              <div style={{
+                marginTop: "20px",
+                padding: "12px 16px",
+                backgroundColor: "#e6ffed",
+                color: "#027a48",
+                border: "1.5px solid #b7eb8f",
+                borderRadius: "8px",
+                fontWeight: "600",
+                fontSize: "15px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px"
+              }}>
+                ✅ Success 
+              </div>
+            )}
 
             {pageNames.length > 0 && (
               <div className="mt-4 p-4 border rounded shadow-sm bg-light">
@@ -604,20 +616,41 @@ const Module = () => {
               </div>
             ))}
 
-
-            {/* Test Case Table */}
-            {fullTestData && (
-              <div style={{ marginTop: "20px" }}>
-                <h3 style={{ color: "#333",fontSize:"25px", margin: "10px" }}>
-                  Test Case JSON Output
-                </h3>
-                <pre style={{ backgroundColor: "#000", color: "#0f0", padding: "15px", borderRadius: "5px", overflowX: "auto" }}>
-                  {JSON.stringify(fullTestData, null, 2)}
-                </pre>
-              </div>
+           {fullTestData && (
+            <div style={{
+              marginTop: "30px",
+              border: "1px solid #ccc",
+              borderRadius: "10px",
+              padding: "20px",
+              backgroundColor: "#fff",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)"
+            }}>
+              <h3 style={{
+                color: "#333",
+                fontSize: "24px",
+                fontWeight: "600",
+                marginBottom: "15px",
+                borderBottom: "1px solid #ddd",
+                paddingBottom: "6px"
+              }}>
+                Test Case JSON Output :
+              </h3>
+              <pre style={{
+                backgroundColor: "#1e1e1e",
+                color: "#00ff00",
+                padding: "15px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                lineHeight: "1.6",
+                overflowX: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word"
+              }}>
+                {JSON.stringify(fullTestData, null, 2)}
+              </pre>
+            </div>
             )}
-            
-            {/* Execute test cases */}
+     
             {executionResult && (
               <div style={{ marginTop: "20px", padding: "10px", border: "1px solid #ccc", borderRadius: "10px" }}>
                 <h4>Execution Result:</h4>
