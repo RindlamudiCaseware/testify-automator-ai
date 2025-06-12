@@ -6,6 +6,8 @@ from utils.match_utils import normalize_page_name
 from utils.file_utils import build_standard_metadata
 from playwright.async_api import async_playwright, Page, Browser
 import json
+import os
+from pathlib import Path
 
 router = APIRouter()
 
@@ -167,6 +169,14 @@ async def capture_from_keyboard(_: CaptureRequest):
         ]
 
         set_last_match_result(standardized_matches)
+
+        # Save enriched metadata as JSON
+        metadata_dir = Path("generated_runs") / "metadata"
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        outfile = metadata_dir / f"after_enrichment_{page_name}.json"
+
+        with open(outfile, "w", encoding="utf-8") as f:
+            json.dump(standardized_matches, f, indent=2)
 
         return {
             "status": "success",

@@ -217,9 +217,11 @@ const Module = () => {
       console.log("API Response:", data);
       const names = Object.keys(data);
       setPageNames(names);
+      toast.success("Successfully generated methods");
     } catch (error) {
       console.error("Error fetching page methods:", error);
       setPageNames([]);
+      toast.error("Error generated methods");
     }
   };
 
@@ -267,8 +269,8 @@ const Module = () => {
 
             <div>
               <button className="btn btn-secondary me-4" onClick={() => setInputType("file")}>Upload files</button>
-              <button className="btn btn-secondary me-4"onClick={handleGenerateMethods}>Generate Methods</button>
-              <button className="btn btn-secondary me-4" onClick={() => setInputType("userStory")}>Enter User Story</button>
+              <button className="btn btn-secondary me-4"onClick={handleGenerateMethods}>Generate Page Methods</button>
+              <button className="btn btn-secondary me-4" onClick={() => setInputType("userStory")}>Generate TestCases </button>
               <button className="btn btn-secondary me-4" onClick={() => setInputType("url")}>Enter URL</button>
               <button 
                 onClick={executeStoryTest}
@@ -403,16 +405,7 @@ const Module = () => {
               {inputType === "userStory" && (
                 <div>
 
-                  <h5 className="mb-3">Enter prompt </h5>
-                  <textarea
-                    placeholder={`Enter Prompt...`}
-                    onChange={(e) => setUserStoriesPrompt(e.target.value)}
-                    value={userStoriesPrompt}
-                    className="form-control"
-                    style={{ minHeight: "100px", backgroundColor: "#f8f9fc" }}
-                  ></textarea>
-
-                  <h5 className="mb-3">Enter one or multiple user stories separated by | </h5>
+                  <h5 className="mb-3">Enter One or Multiple user stories separated by | </h5>
                   <textarea
                     placeholder={`Enter user story 1 |  user story 2 | user.....`}
                     onChange={(e) => setUserStoriesInput(e.target.value)}

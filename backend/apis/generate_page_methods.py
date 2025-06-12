@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pathlib import Path
 import re
 from services.test_generation_utils import collection, filter_all_pages
+from utils.smart_ai_utils import ensure_smart_ai_module
 
 router = APIRouter()
 
@@ -47,23 +48,35 @@ def build_method(entry):
         )
     return code
 
+
 @router.post("/rag/generate-page-methods")
 def generate_page_methods():
-    target_pages = filter_all_pages()  # No input, always all pages in metadata!
+    ensure_smart_ai_module()
+
+    target_pages = filter_all_pages()  
     result = {}
+
     for page in target_pages:
         page_data = collection.get(where={"page_name": page})
         entries = [r for r in page_data.get("metadatas", []) if r.get("label_text")]
         method_blocks = [build_method(entry) for entry in entries]
-        code = "\n".join(method_blocks)
-        # Write out to file
+        
         outdir = Path("generated_runs") / "pages"
         outdir.mkdir(parents=True, exist_ok=True)
         filename = outdir / f"{page}_page_methods.py"
+        
+        header = (
+            "from generated_runs.lib.smart_ai import patch_page_with_smartai\n\n"
+            "# Assumes `page` has been patched already with patch_page_with_smartai(page, metadata)\n\n"
+        )
+        code = header + "\n".join(method_blocks)
+
         with open(filename, "w", encoding="utf-8") as f:
             f.write(code)
+
         result[page] = {
             "filename": str(filename),
             "code": code
         }
+
     return result

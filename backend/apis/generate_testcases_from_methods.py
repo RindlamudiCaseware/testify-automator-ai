@@ -25,6 +25,11 @@ def generate_test_from_methods():
     run_folder = Path("generated_runs")
     pages_dir = run_folder / "pages"
     tests_dir = run_folder / "tests"
+    metadata_dir = run_folder / "metadata"
+
+    # clean_old_files(tests_dir, age_seconds=3600)
+    # clean_old_files(metadata_dir, age_seconds=3600)
+
     tests_dir.mkdir(parents=True, exist_ok=True)
     pages_dir.mkdir(parents=True, exist_ok=True)
 

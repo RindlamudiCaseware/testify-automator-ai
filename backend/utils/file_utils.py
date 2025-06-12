@@ -1,4 +1,6 @@
 import os
+import time
+from pathlib import Path
 from PIL import Image
 from datetime import datetime
 from utils.match_utils import assign_intent_semantic
@@ -99,3 +101,24 @@ def sanitize_metadata(metadata: dict) -> dict:
             return str(value)
         return str(value)
     return {k: safe_convert(v) for k, v in metadata.items()}
+
+
+def clean_old_files(directory: str, age_seconds: int = 3600):
+    """
+    Deletes files older than `age_seconds` from the given directory.
+    """
+    dir_path = Path(directory)
+    if not dir_path.exists():
+        return
+
+    now = time.time()
+    for file in dir_path.glob("*"):
+        if file.is_file():
+            file_age = now - file.stat().st_mtime
+            if file_age > age_seconds:
+                try:
+                    file.unlink()
+                    print(f"[CLEANUP] Deleted old file: {file}")
+                except Exception as e:
+                    print(f"[CLEANUP ERROR] Failed to delete {file}: {e}")
+
