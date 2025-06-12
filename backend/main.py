@@ -62,8 +62,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={"detail": str(exc)},
-        headers=headers,
-        headers=headers,
+        headers=headers
     )
 
 # ✅ Include API routers

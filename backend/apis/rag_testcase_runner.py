@@ -1,68 +1,64 @@
-import os
-import sys
-import subprocess
-import json
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
+import os, sys, subprocess, json
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
 
 router = APIRouter()
 
 project_root = Path(__file__).resolve().parents[1]
 generated_runs_dir = project_root / "generated_runs"
+tests_dir = generated_runs_dir / "tests"
+logs_dir = generated_runs_dir / "logs"
+meta_dir = generated_runs_dir / "metadata"
 
 @router.post("/rag/run-generated-story-test")
 def run_latest_generated_story_test():
     try:
-        story_folders = sorted(
-            [f for f in generated_runs_dir.glob("story_*") if f.is_dir()],
-            key=lambda x: x.name,
+        # 1. Find the latest test file in generated_runs/tests/
+        test_files = sorted(
+            [f for f in tests_dir.glob("test_*.py") if f.is_file()],
+            key=lambda x: x.stat().st_mtime,
             reverse=True
         )
-        if not story_folders:
-            raise HTTPException(status_code=404, detail="No generated story folders found.")
+        if not test_files:
+            raise HTTPException(status_code=404, detail="No generated test files found.")
+        latest_test_path = test_files[0]
 
-        latest_story_dir = story_folders[0]
-        test_path = latest_story_dir / "tests" / "test_from_story.py"
-        logs_dir = latest_story_dir / "logs"
-        meta_dir = latest_story_dir / "metadata"
+        # 2. Prepare logs and metadata paths
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        meta_dir.mkdir(parents=True, exist_ok=True)
+        log_file = logs_dir / f"test_output_{latest_test_path.stem}.log"
+        meta_file = meta_dir / f"execution_metadata_{latest_test_path.stem}.json"
 
-        if not test_path.exists():
-            raise HTTPException(status_code=404, detail="Test file not found in latest story folder.")
-
+        # 3. Run the test using subprocess (ensure imports work from run dir)
         result = subprocess.run(
-            [sys.executable, str(test_path)],
-            cwd=latest_story_dir,
-            env={**os.environ, "PYTHONPATH": str(latest_story_dir)},
+            [sys.executable, str(latest_test_path)],
+            cwd=generated_runs_dir,
+            env={**os.environ, "PYTHONPATH": str(generated_runs_dir)},
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
         )
 
         output = result.stdout + result.stderr
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        meta_dir.mkdir(parents=True, exist_ok=True)
-
-        (logs_dir / "test_output.log").write_text(output, encoding="utf-8")
+        log_file.write_text(output, encoding="utf-8")
         status = "PASS" if result.returncode == 0 and "[PASS]" in output else "FAIL"
 
-        json.dump({"status": status, "timestamp": datetime.now().isoformat()}, open(meta_dir / "execution_metadata.json", "w"))
+        json.dump(
+            {"status": status, "timestamp": datetime.now().isoformat()},
+            open(meta_file, "w"), indent=2
+        )
 
         return {
             "status": status,
             "log": output,
-            "executed_from": str(test_path)
+            "executed_from": str(latest_test_path),
+            "log_file": str(log_file),
+            "meta_file": str(meta_file),
         }
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/rag/download-zip")
-def download_zip(path: str = Query(...)):
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="ZIP not found")
-    return FileResponse(path, filename=os.path.basename(path), media_type="application/zip")

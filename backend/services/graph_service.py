@@ -57,3 +57,9 @@ def find_path(graph, start, end):
                 new_path.append(neighbor)
                 queue.append(new_path)
     return []
+
+def get_adjacency_list(edges: List[dict]) -> dict:
+    graph = {}
+    for edge in edges:
+        graph.setdefault(edge["from"], []).append(edge["to"])
+    return graph
