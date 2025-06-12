@@ -60,8 +60,12 @@ def generate_test_from_methods():
                 # Click/toggle/verify function
                 test_invocations.append(f"        {fn}(page)")
 
-    # Ensure sync_playwright import exists
+    # Ensure all necessary imports exist
     all_imports.add("from playwright.sync_api import sync_playwright")
+    for method_file in method_files:
+        module_name = method_file.stem  # like login_page_methods
+        all_imports.add(f"from pages.{module_name} import *")
+
 
     # Build the full test script content
     script_lines = []
