@@ -187,7 +187,7 @@ if __name__ == "__main__":
 """
 
 def ensure_smart_ai_module():
-    lib_path = Path("generated_runs/lib")
+    lib_path = Path("generated_runs/src/lib")
     lib_path.mkdir(parents=True, exist_ok=True)
     smart_ai_file = lib_path / "smart_ai.py"
     if not smart_ai_file.exists():

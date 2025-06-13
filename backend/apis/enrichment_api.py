@@ -171,12 +171,19 @@ async def capture_from_keyboard(_: CaptureRequest):
         set_last_match_result(standardized_matches)
 
         # Save enriched metadata as JSON
-        metadata_dir = Path("generated_runs") / "metadata"
+        metadata_dir = Path("generated_runs") / "src" / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
         outfile = metadata_dir / f"after_enrichment_{page_name}.json"
 
         with open(outfile, "w", encoding="utf-8") as f:
             json.dump(standardized_matches, f, indent=2)
+
+        # Save ALL current ChromaDB metadata as one file in the same folder
+        chroma_all_data = collection.get()
+        chroma_all_metadatas = chroma_all_data.get("metadatas", [])
+        all_chroma_file = metadata_dir / "after_enrichment.json"
+        with open(all_chroma_file, "w", encoding="utf-8") as f:
+            json.dump(chroma_all_metadatas, f, indent=2)
 
         return {
             "status": "success",

@@ -48,11 +48,9 @@ def build_method(entry):
         )
     return code
 
-
 @router.post("/rag/generate-page-methods")
 def generate_page_methods():
     ensure_smart_ai_module()
-
     target_pages = filter_all_pages()  
     result = {}
 
@@ -61,7 +59,8 @@ def generate_page_methods():
         entries = [r for r in page_data.get("metadatas", []) if r.get("label_text")]
         method_blocks = [build_method(entry) for entry in entries]
         
-        outdir = Path("generated_runs") / "pages"
+        # NOTE: updated to use src/pages under generated_runs
+        outdir = Path("generated_runs") / "src" / "pages"
         outdir.mkdir(parents=True, exist_ok=True)
         filename = outdir / f"{page}_page_methods.py"
         
