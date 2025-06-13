@@ -31,15 +31,14 @@ def run_latest_generated_story_test():
         log_file = logs_dir / f"test_output_{latest_test_path.stem}.log"
         meta_file = meta_dir / f"execution_metadata_{latest_test_path.stem}.json"
 
-        # 3. Run the test using subprocess (ensure imports work from run dir)
         result = subprocess.run(
-            [sys.executable, str(latest_test_path)],
-            cwd=generated_runs_dir,
-            env={**os.environ, "PYTHONPATH": str(generated_runs_dir)},
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+        ["pytest", str(latest_test_path.name), "-v"],  # Note: .name for relative path from cwd
+        cwd=tests_dir,  # so pytest can resolve imports relative to tests
+        env={**os.environ, "PYTHONPATH": str(generated_runs_dir)},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
 
         output = result.stdout + result.stderr
         log_file.write_text(output, encoding="utf-8")

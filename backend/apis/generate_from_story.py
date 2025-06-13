@@ -130,9 +130,12 @@ def generate_from_user_story(req: UserStoryRequest):
     test_file = tests_dir / f"test_{test_idx}.py"
     log_file = logs_dir / f"logs_{log_idx}.log"
 
-    import_lines = ["from playwright.sync_api import sync_playwright"] + [
-        f"from pages.{p}_page_methods import *" for p in path_pages
-    ]
+    page_method_files = sorted((pages_dir).glob("*_page_methods.py"))
+    import_lines = ["from playwright.sync_api import sync_playwright"]
+    for file in page_method_files:
+        module_name = file.stem  
+        import_lines.append(f"from pages.{module_name} import *")
+
     test_file.write_text("\n\n".join(import_lines + test_functions), encoding="utf-8")
     log_file.write_text("\n".join(path_pages), encoding="utf-8")
 
@@ -146,7 +149,6 @@ def generate_from_user_story(req: UserStoryRequest):
         }
         json.dump(metadata, open(meta_file, "w"), indent=2)
     
-    # ---- Inside your endpoint, after generating the run_folder structure ----
     create_default_test_data(run_folder)
 
     return {"results": results, "test_file": str(test_file), "log_file": str(log_file)}
