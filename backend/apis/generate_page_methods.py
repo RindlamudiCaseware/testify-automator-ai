@@ -7,7 +7,6 @@ from utils.smart_ai_utils import ensure_smart_ai_module
 router = APIRouter()
 
 def safe(s):
-    """Convert label or intent to a valid python identifier."""
     return re.sub(r'\W+', '_', s.lower()).strip('_')
 
 def build_method(entry):
@@ -51,7 +50,7 @@ def build_method(entry):
 @router.post("/rag/generate-page-methods")
 def generate_page_methods():
     ensure_smart_ai_module()
-    target_pages = filter_all_pages()  
+    target_pages = filter_all_pages()
     result = {}
 
     for page in target_pages:
@@ -59,13 +58,12 @@ def generate_page_methods():
         entries = [r for r in page_data.get("metadatas", []) if r.get("label_text")]
         method_blocks = [build_method(entry) for entry in entries]
         
-        # NOTE: updated to use src/pages under generated_runs
         outdir = Path("generated_runs") / "src" / "pages"
         outdir.mkdir(parents=True, exist_ok=True)
         filename = outdir / f"{page}_page_methods.py"
-        
+
         header = (
-            "from generated_runs.lib.smart_ai import patch_page_with_smartai\n\n"
+            "from lib.smart_ai import patch_page_with_smartai\n\n" 
             "# Assumes `page` has been patched already with patch_page_with_smartai(page, metadata)\n\n"
         )
         code = header + "\n".join(method_blocks)

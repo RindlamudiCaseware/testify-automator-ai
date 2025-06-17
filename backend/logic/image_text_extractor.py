@@ -47,7 +47,7 @@ async def process_image(image: Image.Image, filename: str, page_name: Optional[s
 
         x, y, w, h = data['left'][i], data['top'][i], data['width'][i], data['height'][i]
 
-        region_img_path = save_region(image=image, x=x, y=y, w=w, h=h, output_dir=regions_dir, page_name=page_name)
+        region_img_path = save_region(image=image, x=x, y=y, w=w, h=h, output_dir=regions_dir, page_name=page_name, )
 
         unique_id = str(uuid.uuid4())
 
@@ -58,6 +58,7 @@ async def process_image(image: Image.Image, filename: str, page_name: Optional[s
             "page_name": page_name,   # ✅ key point → normalized page_name
             "source_type": "image",
             "text": text,
+            "placeholder": text,
             "bbox": f"{x},{y},{w},{h}",
             "region_image_path": region_img_path,
             "xpath": "",
@@ -207,6 +208,7 @@ async def process_image_gpt(
             "label_text": label_text,
             "ocr_type": ocr_type,
             "intent": intent,
+            "placeholder": "",
             "x": x,
             "y": y,
             "width": w,

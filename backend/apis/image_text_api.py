@@ -80,7 +80,11 @@ async def upload_image(
         extracted_images = [f for f in os.listdir(temp_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp'))]
         image_names = ordered_image_list if ordered_image_list else sorted(extracted_images)
 
-        # Step 4: Process images in order
+        # AddedBySubhankar
+        # Initialize global list for storing all raw GPT metadata (across all images)
+        all_raw_metadata = []
+
+        # Step 4: Process images in order using GPT-4o
         for image_name in image_names:
             image_path = os.path.join(temp_dir, image_name)
             if not os.path.exists(image_path):
@@ -102,6 +106,13 @@ async def upload_image(
                     debug_log_path=DEBUG_LOG_PATH
                 )
 
+                # AddedBySubhankar
+                # 💾 Append raw metadata for this image
+                all_raw_metadata.append({
+                    "image_name": image_name,
+                    "metadata": metadata_list
+                })
+
                 for metadata in metadata_list:
                     chroma_collection.add(
                         ids=[metadata["id"]],
@@ -112,6 +123,13 @@ async def upload_image(
 
             image_file_map[image_name] = (image_path, normalize_page_name(image_name))
             actual_received_images.append(image_name)
+
+        # AddedBySubhankar        
+        # ✅ AFTER processing all images, save the raw GPT data to a single file
+        raw_data_file_path = os.path.join("data", "raw_data_from_gpt.json")
+        with open(raw_data_file_path, "w", encoding="utf-8") as f:
+            json.dump(all_raw_metadata, f, indent=2, ensure_ascii=False)
+        logger.info(f"📝 Saved all raw GPT metadata to {raw_data_file_path}")
 
         # Step 5: Store dependency graph
         if ordered_image_list:

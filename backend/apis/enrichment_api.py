@@ -9,10 +9,15 @@ import json
 import os
 from pathlib import Path
 
+import pprint
+
+
+
 router = APIRouter()
 
 client = PersistentClient(path="./data/chroma_db")
 collection = client.get_or_create_collection(name="element_metadata")
+
 
 BROWSER: Browser = None
 PAGE: Page = None
@@ -161,12 +166,42 @@ async def capture_from_keyboard(_: CaptureRequest):
         dom_data = await extract_dom_metadata(PAGE, page_name)
         print("[DEBUG] DOM elements extracted:", len(dom_data))
         ocr_data = collection.get(where={"page_name": page_name})["metadatas"]
+        
+        # Create folder for debug metadata dump added by subhankar
+        debug_metadata_dir = Path("generated_runs") / "src" / "ocr-dom-metadata"
+        debug_metadata_dir.mkdir(parents=True, exist_ok=True)
+      
+        # # Dump DOM data added by subhankar
+        # with open(debug_metadata_dir / f"dom_data_{page_name}.json", "w", encoding="utf-8") as f:
+        #     json.dump(dom_data, f, indent=2, ensure_ascii=False)
+
+        # # Dump OCR data added by subhankar
+        # with open(debug_metadata_dir / f"ocr_data_{page_name}.json", "w", encoding="utf-8") as f:
+        #     json.dump(ocr_data, f, indent=2, ensure_ascii=False)
+
+        
+        # Write DOM data as raw text added by subhankar
+        with open(debug_metadata_dir / f"dom_data_{page_name}.txt", "w", encoding="utf-8") as f:
+            f.write(pprint.pformat(dom_data))
+
+        # Write OCR data as raw text added by subhankar
+        with open(debug_metadata_dir / f"ocr_data_{page_name}.txt", "w", encoding="utf-8") as f:
+            f.write(pprint.pformat(ocr_data))
+        
         updated_matches = match_and_update(ocr_data, dom_data, collection)
+    
+        # Write after_match_and_update data as raw text added by subhankar
+        with open(debug_metadata_dir / f"after_match_and_update{page_name}.txt", "w", encoding="utf-8") as f:
+            f.write(pprint.pformat(updated_matches))
 
         standardized_matches = [
             build_standard_metadata(m, page_name, image_path="", source_url=PAGE.url)
             for m in updated_matches
         ]
+        
+        # Write standardized_matches data as raw text added by subhankar
+        with open(debug_metadata_dir / f"standardized_matchesd{page_name}.txt", "w", encoding="utf-8") as f:
+            f.write(pprint.pformat(standardized_matches))
 
         set_last_match_result(standardized_matches)
 
@@ -174,7 +209,6 @@ async def capture_from_keyboard(_: CaptureRequest):
         metadata_dir = Path("generated_runs") / "src" / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
         outfile = metadata_dir / f"after_enrichment_{page_name}.json"
-
         with open(outfile, "w", encoding="utf-8") as f:
             json.dump(standardized_matches, f, indent=2)
 

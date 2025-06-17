@@ -84,7 +84,8 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         "html_snippet": element.get("html_snippet", ""),
         "dom_matched": element.get("dom_matched", False),
         "ocr_type": ocr_type,
-        "unique_name":unique_name
+        "unique_name":unique_name,
+        "placeholder": element.get("placeholder", "")   # ✅ ADDED LINE by Subhankar
     })
 
 def generate_unique_name(page_name: str, intent: str, label_text: str) -> str:

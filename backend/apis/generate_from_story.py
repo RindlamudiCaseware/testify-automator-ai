@@ -6,7 +6,7 @@ import ast
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from services.graph_service import read_dependency_graph, get_adjacency_list, find_path
-from services.test_generation_utils import openai_client 
+from services.test_generation_utils import openai_client  # Make sure this is the OpenAI client!
 from utils.match_utils import normalize_page_name
 from utils.prompt_utils import build_prompt
 
@@ -37,6 +37,7 @@ def create_default_test_data(run_folder):
     }
     data_dir = Path(run_folder) / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "__init__.py").touch()
     with open(data_dir / "test_data.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
@@ -119,21 +120,21 @@ Output ONLY a Python list (in order) of the page keys (use the keys exactly as s
 
 @router.post("/rag/generate-from-story")
 def generate_from_user_story(req: UserStoryRequest):
+    # CHANGED: All folders are created under generated_runs/src/
     run_folder = Path("generated_runs") / "src"
     pages_dir = run_folder / "pages"
     tests_dir = run_folder / "tests"
     logs_dir = run_folder / "logs"
     meta_dir = run_folder / "metadata"
-    for d in [tests_dir, logs_dir, meta_dir]:
+    for d in [pages_dir, tests_dir, logs_dir, meta_dir]:
         d.mkdir(parents=True, exist_ok=True)
-    (tests_dir / "__init__.py").touch()
+        (d / "__init__.py").touch()
+    (run_folder / "__init__.py").touch()
 
     # Save all ChromaDB metadata as before_enrichment.json before running test generation
     all_chroma_data = collection.get()
     all_chroma_metadatas = all_chroma_data.get("metadatas", [])
 
-    meta_dir = Path("generated_runs") / "src" / "metadata"
-    meta_dir.mkdir(parents=True, exist_ok=True)
     before_file = meta_dir / "before_enrichment.json"
     with open(before_file, "w", encoding="utf-8") as f:
         json.dump(all_chroma_metadatas, f, indent=2)
@@ -162,6 +163,7 @@ def generate_from_user_story(req: UserStoryRequest):
     test_file = tests_dir / f"test_{test_idx}.py"
     log_file = logs_dir / f"logs_{log_idx}.log"
 
+    # CHANGED: Import page methods as from pages.<module> import *
     page_method_files = sorted((pages_dir).glob("*_page_methods.py"))
     import_lines = ["from playwright.sync_api import sync_playwright"]
     for file in page_method_files:
