@@ -80,9 +80,10 @@ def detect_ui_elements_yolo(image_path: str, ocr_bbox: tuple[int, int, int, int]
     confidence = round(float(best_iou if best_iou > 0 else 0.0), 2)
 
     if verbose:
-        print(f"[YOLO DETECT] Classes detected: {dict(class_counts)}")
+        # print(f"[YOLO DETECT] Classes detected: {dict(class_counts)}")
         if ignored_classes:
-            print(f"[YOLO DETECT] Ignored classes: {ignored_classes}")
-        print(f"[YOLO DETECT] Selected type: {best_class} with IOU={best_iou:.2f} for OCR text bbox={ocr_bbox}")
+            # print(f"[YOLO DETECT] Ignored classes: {ignored_classes}")
+            pass
+        # print(f"[YOLO DETECT] Selected type: {best_class} with IOU={best_iou:.2f} for OCR text bbox={ocr_bbox}")
 
     return final_x, final_y, final_w, final_h, best_class, confidence

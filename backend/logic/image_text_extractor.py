@@ -85,7 +85,7 @@ async def process_image(image: Image.Image, filename: str, page_name: Optional[s
         try:
             upsert_text_record(sanitized_record)
             results.append(sanitized_record)
-            print(f"[DEBUG] Inserted OCR record for text='{text}', page_name='{page_name}', id='{unique_id}'")
+            # print(f"[DEBUG] Inserted OCR record for text='{text}', page_name='{page_name}', id='{unique_id}'")
         except Exception as e:
             print(f"⚠️ Skipping {filename} entry {unique_id}: {e}")
 
@@ -118,7 +118,7 @@ Your task is to analyze a given screenshot of a user interface (UI) and extract 
 
 1. Element Extraction:
    - Extract ALL visible UI text from the image, including:
-     • Input fields (textboxes)
+     • Input fields 
      • Buttons
      • Labels (including credentials, instructions)
      • Dropdowns, checkboxes

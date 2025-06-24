@@ -52,7 +52,7 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         except Exception as e:
             print(f"[WARN] classify_ocr_type failed for '{image_path}': {e}")
     ocr_type = ocr_type if ocr_type else "label"
-    unique_name = generate_unique_name(page_name,intent,label_text)
+    unique_name = generate_unique_name(page_name,intent,label_text, ocr_type)
 
     return sanitize_metadata({
         "id": element.get("id") or element.get("ocr_id") or element.get("element_id", ""),
@@ -88,9 +88,9 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         "placeholder": element.get("placeholder", "")   # ✅ ADDED LINE by Subhankar
     })
 
-def generate_unique_name(page_name: str, intent: str, label_text: str) -> str:
+def generate_unique_name(page_name: str, intent: str, label_text: str, ocr_type: str) -> str:
     label = label_text.lower().strip().replace(" ", "_")
-    return f"{page_name}_{intent}_{label}"
+    return f"{page_name}_{intent}_{label}_{ocr_type}"
 
 def sanitize_metadata(metadata: dict) -> dict:
     def safe_convert(value):
@@ -119,7 +119,7 @@ def clean_old_files(directory: str, age_seconds: int = 3600):
             if file_age > age_seconds:
                 try:
                     file.unlink()
-                    print(f"[CLEANUP] Deleted old file: {file}")
+                    # print(f"[CLEANUP] Deleted old file: {file}")
                 except Exception as e:
                     print(f"[CLEANUP ERROR] Failed to delete {file}: {e}")
 

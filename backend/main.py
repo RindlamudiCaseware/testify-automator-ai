@@ -15,6 +15,7 @@ import sys
 import asyncio
 import os
 import subprocess
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -75,6 +76,29 @@ app.include_router(generate_from_manual_testcase_router)
 app.include_router(generate_page_methods_router)
 app.include_router(generate_test_code_from_methods_router)
 
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=False)
+
+
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,  # 👈 Show only INFO and above
+        format="%(levelname)s: %(message)s"
+    )    
+    # Reduce noise from third-party libraries
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("chromadb").setLevel(logging.WARNING)
+    logging.getLogger("PIL").setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
+    logging.getLogger("python_multipart").setLevel(logging.WARNING)
+    # logging.getLogger("uvicorn").setLevel(logging.INFO)            # Default server logs
+    # logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Access logs
+    # logging.getLogger("httpcore").setLevel(logging.WARNING)        # HTTP-level logs
+    logging.getLogger("watchfiles").setLevel(logging.WARNING)
+    logging.getLogger("tqdm").setLevel(logging.WARNING)
+
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=False)
+    uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=False, log_level="info")

@@ -65,12 +65,12 @@ INTENT_TEMPLATES = {
 }
 
 intent_embeddings = {
-    intent: intent_model.encode(labels, convert_to_tensor=True)
+    intent: intent_model.encode(labels, convert_to_tensor=True, show_progress_bar=False)
     for intent, labels in INTENT_TEMPLATES.items()
 }
 
 def assign_intent_semantic(label_text: str) -> str:
-    label_embedding = intent_model.encode(label_text, convert_to_tensor=True)
+    label_embedding = intent_model.encode(label_text, convert_to_tensor=True, show_progress_bar=False)
 
     best_intent = None
     best_score = -1

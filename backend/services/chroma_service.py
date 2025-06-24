@@ -129,9 +129,10 @@ def fetch_ocr_entries():
                 "page": meta.get("page_name", "")
             })
 
-        print(f"[FETCH OCR] Found {len(ocr_entries)} OCR entries")
+        # print(f"[FETCH OCR] Found {len(ocr_entries)} OCR entries")
         for entry in ocr_entries:
-            print(f"  ID: {entry['id']} | Text: {entry['text']} | Page: {entry['page']}")
+            # print(f"  ID: {entry['id']} | Text: {entry['text']} | Page: {entry['page']}")
+            pass
         return ocr_entries
     except Exception as e:
         error_logger.warning(f"fetch_ocr_entries failed: {str(e)}")

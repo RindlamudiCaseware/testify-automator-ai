@@ -144,7 +144,7 @@ async def process_url_and_update_chroma(url: str, chroma_collection=None, embedd
     snapshot_id = f"{page_name}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
     print(f"✍️ [DEBUG] Processing URL: {url}")
-    print(f"✍️ [DEBUG] Extracted page_name: {page_name}")
+    # print(f"✍️ [DEBUG] Extracted page_name: {page_name}")
 
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -233,7 +233,7 @@ async def process_url_and_update_chroma(url: str, chroma_collection=None, embedd
             }
             element_metadata.append(record)
 
-            print(f"   🏷️  [DEBUG] Extracted locator: {tag_name}, label: '{label_text}', role: '{role}'")
+            # print(f"   🏷️  [DEBUG] Extracted locator: {tag_name}, label: '{label_text}', role: '{role}'")
 
             if chroma_collection:
                 embedding = None

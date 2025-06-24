@@ -18,7 +18,7 @@ router = APIRouter()
 
 class UserStoryRequest(BaseModel):
     user_story: str | List[str]
-    site_url: Optional[str] = Field(default="https://www.example.com")
+    site_url: Optional[str] = Field(default="https://www.saucedemo.com")
 
 def create_default_test_data(run_folder):
     data = {
@@ -62,16 +62,71 @@ def next_index(target_dir, pattern="test_{}.py"):
     indices = [int(m.group(1)) for f in files if (m := re.match(r".*_(\d+)\.", f.name))]
     return max(indices, default=0) + 1
 
+# def generate_test_code_from_methods(user_story, method_map, page_names, site_url):
+#     dynamic_steps = []
+#     for methods in method_map.values():
+#         for method in methods:
+#             if method.startswith("fill_"):
+#                 dynamic_steps.append(f"    - Call `{method}(\"<{method.replace('fill_', '')}>\")`")
+#             elif method.startswith("click_"):
+#                 dynamic_steps.append(f"    - Call `{method}()`")
+#     user_story_clean = user_story.replace('"""', '\"\"\"')
+#     story_block = f'"""{user_story_clean}"""'
+
+#     prompt = build_prompt(
+#         story_block=story_block,
+#         method_map=method_map,
+#         page_names=page_names,
+#         site_url=site_url,
+#         dynamic_steps=dynamic_steps
+#     )
+
+#     # Use the correct OpenAI client here!
+#     result = openai_client.chat.completions.create(
+#         model="gpt-4o",
+#         messages=[{"role": "user", "content": prompt}],
+#         max_tokens=4096
+#     )
+#     return re.sub(r"```(?:python)?|^\s*Here is.*?:", "", result.choices[0].message.content.strip(), flags=re.MULTILINE).strip()
+
+
 def generate_test_code_from_methods(user_story, method_map, page_names, site_url):
+    
     dynamic_steps = []
     for methods in method_map.values():
         for method in methods:
-            if method.startswith("fill_"):
-                dynamic_steps.append(f"    - Call `{method}(\"<{method.replace('fill_', '')}>\")`")
-            elif method.startswith("click_"):
+            if method.startswith("fill_") or method.startswith("enter_"):
+                param = method.replace("fill_", "").replace("enter_", "")
+                dynamic_steps.append(f"    - Call `{method}(\"<{param}>\")`")
+
+            elif method.startswith("click_") or method.startswith("select_"):
                 dynamic_steps.append(f"    - Call `{method}()`")
+
+            elif method.startswith("verify_"):
+                readable = method.replace(
+                    "verify_", "").replace("_", " ").capitalize()
+                dynamic_steps.append(
+                    f"    - Assert `{method}()` → checks if **{readable}** is visible")
     user_story_clean = user_story.replace('"""', '\"\"\"')
     story_block = f'"""{user_story_clean}"""'
+
+    # Storing the dynamic_steps. 
+    # 1. Set target directory
+    output_dir = Path("generated_runs/src/logs/dynamic_steps")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    # 2. Find the next available filename: dynamic_steps_1.md, dynamic_steps_2.md, ...
+    i = 1
+    while True:
+        output_file = output_dir / f"dynamic_steps_{i}.md"
+        if not output_file.exists():
+            break
+        i += 1
+    # 3. Write dynamic steps into the new file
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("# Dynamic Steps\n\n")
+        for step in dynamic_steps:
+            f.write(step + "\n")
+
 
     prompt = build_prompt(
         story_block=story_block,
@@ -80,6 +135,21 @@ def generate_test_code_from_methods(user_story, method_map, page_names, site_url
         site_url=site_url,
         dynamic_steps=dynamic_steps
     )
+    # Storing the prompts
+    # 1. Set target directory
+    prompt_dir = Path("generated_runs/src/logs/prompts")
+    prompt_dir.mkdir(parents=True, exist_ok=True)
+    # 2. Find the next available filename: prompt_1.md, prompt_2.md, ...
+    i = 1
+    while True:
+        prompt_file = prompt_dir / f"prompt_{i}.md"
+        if not prompt_file.exists():
+            break
+        i += 1
+    # 3. Write the prompt string into the file
+    with open(prompt_file, "w", encoding="utf-8") as f:
+        f.write(prompt)
+
 
     # Use the correct OpenAI client here!
     result = openai_client.chat.completions.create(
@@ -87,7 +157,31 @@ def generate_test_code_from_methods(user_story, method_map, page_names, site_url
         messages=[{"role": "user", "content": prompt}],
         max_tokens=4096
     )
-    return re.sub(r"```(?:python)?|^\s*Here is.*?:", "", result.choices[0].message.content.strip(), flags=re.MULTILINE).strip()
+    
+    # Clean the result text
+    clean_output = re.sub(
+        r"```(?:python)?|^\s*Here is.*?:",
+        "",
+        result.choices[0].message.content.strip(),
+        flags=re.MULTILINE
+    ).strip()
+
+    # Store the output in test_output_<n>.py
+    output_dir = Path("generated_runs/src/logs/test_output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    # 2. Find the next available filename: test_output_1.md, test_output_2.md, ...
+    i = 1
+    while True:
+        output_file = output_dir / f"test_output_{i}.py"
+        if not output_file.exists():
+            break
+        i += 1
+    # 3. Write the clean_output into the test_output.py file
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(clean_output)
+
+    return clean_output
+
 
 def get_inferred_pages(user_story: str, method_map_full: dict, openai_client):
     page_list_str = "\n".join(

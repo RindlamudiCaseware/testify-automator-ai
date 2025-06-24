@@ -51,7 +51,42 @@ def build_method(entry):
 def generate_page_methods():
     ensure_smart_ai_module()
     target_pages = filter_all_pages()
+    print("apis.generate_page_methods.py | target_pages = ", target_pages)
     result = {}
+
+    # Setting the path and content for conftest.py 
+    def create_conftest_file():
+        conftest_content = '''import pytest
+import json
+from pathlib import Path
+from lib.smart_ai import patch_page_with_smartai
+
+@pytest.fixture(autouse=True)
+def smartai_page(page):    
+    # Get the path to THIS FILE's directory
+    script_dir = Path(__file__).parent
+    # Go up one to 'src', then into 'metadata'
+    metadata_path = (script_dir.parent / "metadata" / "after_enrichment.json").resolve()
+
+    print("Loading:", metadata_path)  # Debug, can remove
+
+    with open(metadata_path, "r") as f:
+        actual_metadata = json.load(f)
+    patch_page_with_smartai(page, actual_metadata)
+    return page
+'''
+
+
+        # Navigate from /apis/ to /generated_runs/src/tests
+        tests_dir = Path(__file__).parent.parent / "generated_runs" / "src" / "tests"
+        tests_dir.mkdir(parents=True, exist_ok=True)
+
+        conftest_path = tests_dir / "conftest.py"
+        conftest_path.write_text(conftest_content.strip())
+        print(f"✅ conftest.py created at: {conftest_path}")
+    # Creating conftest.py
+    create_conftest_file()
+
 
     for page in target_pages:
         page_data = collection.get(where={"page_name": page})

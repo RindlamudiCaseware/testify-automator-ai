@@ -36,15 +36,35 @@ class PageNameSetRequest(BaseModel):
 async def send_enrichment_requests(page_name: str):
     from httpx import AsyncClient
     async with AsyncClient() as client:
-        await client.post("http://localhost:8001/set-current-page-name", json={"page_name": page_name})
-        resp = await client.post("http://localhost:8001/capture-dom-from-client", json={})
-        json_data = await resp.aread()
-        print("[DEBUG] Response Raw JSON:", json_data)
         try:
-            return json.loads(json_data)
+            await client.post("http://localhost:8001/set-current-page-name", json={"page_name": page_name})
         except Exception as e:
-            print("[ERROR] JSON parsing failed:", e)
-            return {"status": "fail", "error": str(e)}
+            # print(f"🔥Error from: await client.post('http://localhost:8001/set-current-page-name': {e}")
+            return {"status": "fail", "error": "set-current-page-name failed"}
+
+        try:
+            resp = await client.post("http://localhost:8001/capture-dom-from-client", json={})
+        except Exception as e:
+            # print("🔥🔥Error from: await client.post('http://localhost:8001/capture-dom-from', {e}")
+            return {"status": "fail", "error": "capture-dom-from-client failed"}
+
+        json_data = None
+        try:
+            json_data = await resp.aread()
+            decoded_json_data = json_data.decode("utf-8").strip()
+            if not decoded_json_data or decoded_json_data in ["null", "undefined"]:
+                return {"status": "fail", "error": "Empty or invalid response"}
+        except Exception as e:
+            # print(f"🔥🔥🔥Error from: await resp.aread(): {e}")
+            return {"status": "fail", "error": f"Error reading response: {e}"}
+        
+        # print("[DEBUG] Response Raw JSON:", decoded_json_data)
+        try:
+            return json.loads(decoded_json_data)
+        except Exception as e:
+            # print("🔥🔥🔥🔥[ERROR] JSON parsing failed:", e)
+            return {"status": "fail", "error": "Response parsing failed : {e}"}
+
 
 @router.post("/launch-browser")
 async def launch_browser(req: LaunchRequest):
@@ -59,7 +79,7 @@ async def launch_browser(req: LaunchRequest):
         async def send_enrichment_wrapper(source, page_name):
             print("[DEBUG] Triggering enrichment for:", page_name)
             result = await send_enrichment_requests(page_name)
-            print("[DEBUG] Enrichment result:", result)
+            # print("[DEBUG] Enrichment result:", result)
             return json.dumps(result)
 
         await PAGE.expose_binding("sendEnrichmentRequests", send_enrichment_wrapper)
@@ -111,12 +131,13 @@ async def launch_browser(req: LaunchRequest):
                 messageBox.offsetHeight;
 
                 try {
+                    
                     const resultStr = await window.sendEnrichmentRequests(pageName);
                     const result = JSON.parse(resultStr);
                     console.log("✅ Matched:", result);
 
                     if (result.count === 0) {
-                        messageBox.innerText = "❌ Enrichment failed: No elements matched.";
+                        messageBox.innerText = "❌ Enrichment failed: ${result.count} elements matched."; 
                         messageBox.style.color = "red";
                     } else {
                         messageBox.innerText = `✅ Enriched ${result.count} elements successfully.`;
@@ -124,7 +145,7 @@ async def launch_browser(req: LaunchRequest):
                     }
                 } catch (err) {
                     console.error("Enrichment Error:", err);
-                    messageBox.innerText = "❌ Enrichment failed: " + err.message;
+                    messageBox.innerText = "❌ Enrichment failed: " + err.message + "sg";
                     messageBox.style.color = "red";
                 }
             };

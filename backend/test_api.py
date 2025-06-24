@@ -54,7 +54,7 @@ Your task is to analyze a given screenshot of a user interface (UI) and extract 
 
 1. Element Extraction:
    - Extract ALL visible UI text from the image, including:
-     • Input fields (textboxes)
+     • Input fields
      • Buttons
      • Labels (including credentials, instructions)
      • Dropdowns, checkboxes
