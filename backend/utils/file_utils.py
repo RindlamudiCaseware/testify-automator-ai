@@ -12,7 +12,8 @@ def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: 
         try:
             x, y, w, h = detect_ui_elements_yolo(image_path, (x, y, w, h))
         except Exception as e:
-            print(f"[YOLO FALLBACK] Using default bbox due to: {e}")
+            # print(f"[YOLO FALLBACK] Using default bbox due to: {e}")
+            pass
 
     # ✅ Clamp bounding box to image dimensions
     x = max(0, min(x, image.width - 1))

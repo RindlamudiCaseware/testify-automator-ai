@@ -68,7 +68,7 @@ def smartai_page(page):
     # Go up one to 'src', then into 'metadata'
     metadata_path = (script_dir.parent / "metadata" / "after_enrichment.json").resolve()
 
-    print("Loading:", metadata_path)  # Debug, can remove
+    # print("Loading:", metadata_path)  # Debug, can remove
 
     with open(metadata_path, "r") as f:
         actual_metadata = json.load(f)
@@ -83,7 +83,7 @@ def smartai_page(page):
 
         conftest_path = tests_dir / "conftest.py"
         conftest_path.write_text(conftest_content.strip())
-        print(f"✅ conftest.py created at: {conftest_path}")
+        # print(f"✅ conftest.py created at: {conftest_path}")
     # Creating conftest.py
     create_conftest_file()
 

@@ -27,7 +27,7 @@ async def process_image(image: Image.Image, filename: str, page_name: Optional[s
     # if not page_name.startswith("www_"):
     #     page_name = f"www_{page_name}"
 
-    print(f"[DEBUG] Final OCR page_name = '{page_name}' (from filename='{filename}')")
+    # print(f"[DEBUG] Final OCR page_name = '{page_name}' (from filename='{filename}')")
 
     image_dir = os.path.join(DATA_PATH, "images")
     os.makedirs(image_dir, exist_ok=True)
