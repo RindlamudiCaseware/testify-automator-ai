@@ -39,7 +39,7 @@ async def send_enrichment_requests(page_name: str):
         try:
             resp = await client.post("http://localhost:8001/capture-dom-from-client", json={})
         except Exception as e:
-            print("🔥🔥Error from: await client.post('8001/capture-from-dom-client', {e}")
+            print("🔥🔥Error from: await client.post('8001/capture-from-dom-client'", e)
             return {"status": "fail", "error": "capture-dom-from-client failed"}
         print('[DEBUG] capture_dom_from_client done. resp = ', resp, "Now trying to convert the data to json", sep='\n')
 

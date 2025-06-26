@@ -97,7 +97,7 @@ if __name__ == "__main__":
     # logging.getLogger("uvicorn").setLevel(logging.INFO)            # Default server logs
     # logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Access logs
     # logging.getLogger("httpcore").setLevel(logging.WARNING)        # HTTP-level logs
-    logging.getLogger("watchfiles").setLevel(logging.WARNING)
+    logging.getLogger("watchfiles").setLevel(logging.ERROR)
     logging.getLogger("tqdm").setLevel(logging.WARNING)
 
     import uvicorn
