@@ -11,6 +11,7 @@ from apis.generate_from_story import router as generate_from_story_router
 from apis.generate_page_methods import router as generate_page_methods_router
 from apis.generate_from_manual_testcases import router as generate_from_manual_testcase_router
 from apis.generate_testcases_from_methods import router as generate_test_code_from_methods_router
+from apis.manual_add_metadata import router as manual_add_metadata
 import sys
 import asyncio
 import os
@@ -75,6 +76,8 @@ app.include_router(debug_chroma_export_router)
 app.include_router(generate_from_manual_testcase_router)
 app.include_router(generate_page_methods_router)
 app.include_router(generate_test_code_from_methods_router)
+app.include_router(manual_add_metadata)
+
 
 # if __name__ == "__main__":
 #     import uvicorn

@@ -74,8 +74,8 @@ async def extract_dom_metadata(page: Page, page_name: str) -> List[Dict[str, Any
     for i, elem in enumerate(elements):
         try:
             if await elem.is_visible():            
-                tag = await elem.evaluate("e => e.tagName")
-                text = await elem.evaluate("e => e.textContent")
+                tag = await elem.evaluate("e => e.tagName.toLowerCase()")
+                text = await elem.evaluate("e => e.textContent.toLowerCase()")
                 elem_id = await elem.get_attribute("id")
                 elem_class = await elem.get_attribute("class")
                 placeholder = await elem.get_attribute("placeholder")
@@ -160,61 +160,61 @@ def match_and_update(ocr_data, dom_data, collection, text_thresh=0.5, bbox_thres
     print(f"[DEBUG] Matching {len(ocr_data)} OCRs with {len(dom_data)} DOMs")
 
     for ocr in ocr_data:
-        if not ocr.get("label_text") or not ocr.get("bbox"):
-            print(f"[SKIP] OCR missing label_text or bbox: {ocr}")
-            continue
-
-        ocr_text = ocr["label_text"].strip().lower()
-        best_match = None
-        best_score = 0.0
-
-        for dom in dom_data:            
-            dom_text = dom.get("text", "") or dom.get("placeholder", "") or dom.get("value")
-            if not dom_text:
+        if not ocr.get("external"):
+            if not ocr.get("label_text") or not ocr.get("bbox"):
+                print(f"[SKIP] OCR missing label_text or bbox: {ocr}")
                 continue
 
-            sim = text_similarity(ocr["text"].lower(), dom_text.lower())
+            best_match = None
+            best_score = 0.0
 
-            if sim >= text_thresh and sim > best_score:
-                best_match = dom
-                best_score = sim                
+            for dom in dom_data:            
+                dom_text = dom.get("text", "") or dom.get("placeholder", "") or dom.get("value")
+                if not dom_text:
+                    continue
 
-        if best_match:
-            updated = ocr.copy()
-            updated.update({
-                "tag_name": best_match.get("tag_name", ""),
-                "label_text": best_match.get("text") or best_match.get("placeholder") or best_match.get("value") or "",
-                # "id": best_match.get("id", ""),
-                "class": best_match.get("class", ""),
-                "value": best_match.get("value", ""),
-                "placeholder": best_match.get("placeholder", ""),
-                "type": best_match.get("type", ""),
-                # "attributes": best_match.get("attributes", ""),
-                "enable": best_match.get("enable", ""),
-                "visible": best_match.get("visible", ""),
-                "editable": best_match.get("editable", ""),
-                
-                "x": best_match.get("x", ""),
-                "y": best_match.get("y", ""),
-                "width": best_match.get("width", ""),
-                "height": best_match.get("height", ""),
-                "dom_matched": True,
-                "match_timestamp": datetime.utcnow().isoformat()
-            })
-            # Set label_text with your preferred fallback order
-            updated["label_text"] = (
-                (best_match.get("text")).strip() or
-                (best_match.get("placeholder")).strip() or
-                (best_match.get("value")).strip() or
-                ""
-            )
+                sim = text_similarity(ocr["text"].lower(), dom_text.lower())
 
-            collection.upsert(
-                ids=[updated["id"]],
-                documents=[updated["label_text"]],
-                metadatas=[updated],
-            )
-            matched_records.append(updated)
+                if sim >= text_thresh and sim > best_score:
+                    best_match = dom
+                    best_score = sim                
+
+            if best_match:
+                updated = ocr.copy()
+                updated.update({
+                    "tag_name": best_match.get("tag_name", ""),
+                    "label_text": best_match.get("text") or best_match.get("placeholder") or best_match.get("value") or "",
+                    "dom-id": best_match.get("id", ""),
+                    "dom_class": best_match.get("class", ""),
+                    "value": best_match.get("value", ""),
+                    "placeholder": best_match.get("placeholder", ""),
+                    "type": best_match.get("type", ""),
+                    # "attributes": best_match.get("attributes", ""),
+                    "enable": best_match.get("enable", ""),
+                    "visible": best_match.get("visible", ""),
+                    "editable": best_match.get("editable", ""),
+                    
+                    "x": best_match.get("x", ""),
+                    "y": best_match.get("y", ""),
+                    "width": best_match.get("width", ""),
+                    "height": best_match.get("height", ""),
+                    "dom_matched": True,
+                    "match_timestamp": datetime.utcnow().isoformat()
+                })
+                # Set label_text with your preferred fallback order
+                updated["label_text"] = (
+                    (best_match.get("text")).strip() or
+                    (best_match.get("placeholder")).strip() or
+                    (best_match.get("value")).strip() or
+                    ""
+                )
+
+                collection.upsert(
+                    ids=[updated["id"]],
+                    documents=[updated["label_text"]],
+                    metadatas=[updated],
+                )
+                matched_records.append(updated)
 
     LAST_MATCHED_RESULTS = matched_records
     print(f"[✅] Matched {len(matched_records)} elements.")

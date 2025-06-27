@@ -219,7 +219,6 @@ class SmartAISelfHealing:
 
     def find_element(self, unique_name, page):
         element = self._find_by_unique_name(unique_name)
-
         if element:
             locator = self._try_all_locators(element, page)
             if locator:
@@ -280,10 +279,20 @@ class SmartAISelfHealing:
         if element.get("locator") and element["locator"].get("type") == "css":
             try_methods.append(lambda: page.locator(element["locator"]["value"]))
 
+        # ✅ NEW: Try by class (string)
+        if element.get("class"):
+            # Exact class match (e.g., class="shopping_cart_link")
+            class_value = element["class"]
+            class_sel = "." + ".".join(class_value.split())
+            try_methods.append(lambda: page.locator(class_sel))
+            # Optional: partial match for robustness
+            try_methods.append(lambda: page.locator(f'[class*="{class_value}"]'))
+
+        # Existing: class_list (list of classes)
         if element.get("class_list"):
             sel = "." + ".".join(element["class_list"])
             try_methods.append(lambda: page.locator(sel))
-
+            
         for method in try_methods:
             try:
                 locator = method()
@@ -293,6 +302,70 @@ class SmartAISelfHealing:
                 continue
 
         return None
+
+    # def _try_all_locators(self, element, page):
+    #     try_methods = []
+
+    #     # 1. By ID (most reliable if unique)
+    #     if element.get("id"):
+    #         try_methods.append(lambda: page.locator(f'#{element["id"]}'))
+
+    #     # 2. By class (often reliable for buttons/icons)
+    #     if element.get("class"):
+    #         class_sel = "." + ".".join(element["class"].split())
+    #         try_methods.append(lambda: page.locator(class_sel))
+    #         # For <a class="shopping_cart_link">, this will select it!
+
+    #     # 3. Data-test or data-qa attributes
+    #     data_attrs = element.get("data_attrs", {})
+    #     for k, v in data_attrs.items():
+    #         if "test" in k.lower() or "qa" in k.lower():
+    #             try_methods.append(lambda: page.get_by_test_id(v))
+
+    #     # 4. Placeholder (for input fields)
+    #     if element.get("placeholder"):
+    #         try_methods.append(lambda: page.get_by_placeholder(element["placeholder"]))
+
+    #     # 5. Label text
+    #     if element.get("label_text"):
+    #         try_methods.append(lambda: page.get_by_label(element["label_text"]))
+    #         try_methods.append(lambda: page.get_by_text(element["label_text"], exact=True))
+
+    #     # 6. By text content (least preferred, often not unique for icons)
+    #     if element.get("text"):
+    #         try_methods.append(lambda: page.get_by_text(element["text"], exact=True))
+
+    #     # 7. Tag name + class (e.g. 'a.shopping_cart_link')
+    #     if element.get("tag_name") and element.get("class"):
+    #         tag = element["tag_name"].lower()
+    #         class_sel = "." + ".".join(element["class"].split())
+    #         try_methods.append(lambda: page.locator(f"{tag}{class_sel}"))
+
+    #     # 8. Role (mapped from tag name)
+    #     if element.get("tag_name"):
+    #         role = self._map_tag_to_role(element["tag_name"])
+    #         if role:
+    #             try_methods.append(lambda: page.get_by_role(role, name=element.get("label_text", None)))
+
+    #     # 9. Sample value (rare, for <option> or input)
+    #     if element.get("sample_value"):
+    #         try_methods.append(lambda: page.get_by_display_value(element["sample_value"]))
+
+    #     # 10. Custom locator from metadata
+    #     if element.get("locator") and element["locator"].get("type") == "css":
+    #         try_methods.append(lambda: page.locator(element["locator"]["value"]))
+
+    #     # Try all methods in order, return the first that matches something
+    #     for method in try_methods:
+    #         try:
+    #             locator = method()
+    #             if locator.count() > 0:
+    #                 return locator.first
+    #         except Exception:
+    #             continue
+
+    #     return None  # Will fallback to ML self-heal if needed
+
 
     def _ml_self_heal(self, unique_name):
         query_embedding = self.model.encode(unique_name, convert_to_tensor=True, show_progress_bar=False)
@@ -349,57 +422,134 @@ if __name__ == "__main__":
 
         patch_page_with_smartai(page, actual_metadata)
 
-
+        # ------------------------------- login
+        # try:
+        #     page.smartAI('saucedemo_login_title_swag_labs_label').is_visible()
+        #     print("saucedemo_login_title_swag_labs_label is visible")
+        # except Exception as e:
+        #     print(f"saucedemo_login_title_swag_labs_label error: {e}")
+        time.sleep(1)
         try:
-            page.smartAI('saucedemo_login_title_swag_labs_label').is_visible()
-            print("saucedemo_login_title_swag_labs_label is visible")
-        except Exception as e:
-            print(f"saucedemo_login_title_swag_labs_label error: {e}")
-
-        try:
-            username_field = page.smartAI('saucedemo_login_username_username_textbox')
-            username_field.fill("standard_user")
+            page.smartAI('saucedemo_login_username_username_textbox').fill('standard_user')
             print("Username filled successfully.")
         except Exception as e:
             print(f"Username fill error: {e}")
+        time.sleep(1)
 
         try:
-            password_field = page.smartAI('saucedemo_login_password_password_textbox')
-            password_field.fill("secret_sauce")
+            page.smartAI('saucedemo_login_password_password_textbox').fill('secret_sauce')
             print("Password filled successfully.")
         except Exception as e:
             print(f"Password fill error: {e}")
+        time.sleep(1)
 
         try:
-            login_btn = page.smartAI('saucedemo_login_submit_login_button')
-            login_btn.click()
+            page.smartAI('saucedemo_login_login_login_button').click()
             print("Login button clicked.")
         except Exception as e:
             print(f"Login click error: {e}")
-        # ------------------------------------------
+        time.sleep(1)
+        # ----------------------------- inventory
         try:
-            assert page.smartAI('saucedemo_inventory_section_title_products_label').is_visible()
-            print("saucedemo_inventory_section_title_products_label is visible.")
+            assert page.smartAI('saucedemo_inventory_product_list_products_label').is_visible()
+            print("Product verified.")
         except Exception as e:
-            print(f"saucedemo_inventory_section_title_products_label visible error: {e}")
+            print("Product verified error.", e)
+        time.sleep(1)
+        
+        try:            
+            assert page.smartAI('saucedemo_inventory_product_name_sauce_labs_backpack_label').is_visible()
+            print("SauceLab Backpack verified.")
+        except Exception as e:
+            print("SauceLab Backpack verified error.", e)
+        time.sleep(1)
         
         try:
             page.smartAI('saucedemo_inventory_add_to_cart_add_to_cart_button').click()
-            print("saucedemo_inventory_add_to_cart_add_to_cart_button is clicked.")
+            print("Add-To-Cart is clicked.")
         except Exception as e:
-            print(f"saucedemo_inventory_add_to_cart_add_to_cart_button click error: {e}")
-        # --------------------------------------------                
-        # try:
-        #     page.smartAI('saucedemo_cart_page_header_your_cart_label').click()
-        #     print("saucedemo_cart_page_header_your_cart_label is clicked.")
-        # except Exception as e:
-        #     print(f"saucedemo_cart_page_header_your_cart_label click error: {e}")
+            print("Add-To-Cart is clicked error.", e)
+        time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_inventory_go_to_cart_shopping_cart_link_button').click()
+            print("Shopping Cart is clicked.")
+        except Exception as e:
+            print("Shopping Cart is clicked error.", e)
+        time.sleep(1)
+        # ----------------------------- cart             
+        try:
+            assert page.smartAI('saucedemo_cart_header_your_cart_label').is_visible()
+            print("Your Cart Label verified.")
+        except Exception as e:
+            print("Your Cart Label verified error.", e)
+        time.sleep(1)
+
+        try:
+            page.smartAI('saucedemo_cart_proceed_checkout_checkout_button').click()
+            print("Checkout clicked.")
+        except Exception as e:
+            print("Checkout clicked error.", e)
+        time.sleep(1)
+        
+        # ----------------------------- checkout-info
+        try:
+            assert page.smartAI('saucedemo_checkout_info_instructions_checkout:_your_information_label').is_visible()
+            print("Checkout Info verified.")
+        except Exception as e:
+            print("Checkout Info verified error.", e)
+        time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_info_first_name_first_name_textbox').fill('John')
+            print("First name filled.")
+        except Exception as e:
+            print("First name filled error.", e)
+        time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_info_last_name_last_name_textbox').fill('Doe')
+            print("Last name filled.")
+        except Exception as e:
+            print("Last name filled error.", e)
+        time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_info_zip_code_zip/postal_code_textbox').fill('123456')
+            print("zip code filled.")
+        except Exception as e:
+            print("zip code filled error.", e)
+        time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_info_continue_continue_button').click()
+            print("Continue button clicked.")
+        except Exception as e:
+            print("Continue button not clicked.", e)
+        time.sleep(1)
+        
+        # ------------------------------- checkout-overview
+        try:
+            assert page.smartAI('saucedemo_checkout_overview_page_title_checkout:_overview_label').is_visible()
+            print("Checkout Overview verified.")
+        except Exception as e:
+            print("Checkout Overview verified error.", e)
+        time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_overview_finish_finish_button').click()
+            print("Finish button clicked.")
+        except Exception as e:
+            print("Finish button not clicked.", e)
+        time.sleep(1)
+        
+
+
 
         time.sleep(5)
         browser.close()
 
 """
-
 
 # SMART_AI_CODE = """
 # import json
