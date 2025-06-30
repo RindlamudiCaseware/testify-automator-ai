@@ -65,7 +65,7 @@ def build_complete_metadata(manual: ManualMetadataInput):
         "source_url": "",
         "bbox": bbox,
         "position_relation": "{}",
-        "tag_name": manual.ocr_type,
+        "tag_name": "",
         "xpath": "",
         "get_by_text": manual.text or "",
         "get_by_role": "",

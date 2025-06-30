@@ -80,7 +80,7 @@ from typing import List
 #         f"Generate the code for all three cases below."
 #     )
 
-
+# original code
 def build_prompt(
     story_block: str,
     method_map: dict,
@@ -124,6 +124,188 @@ def build_prompt(
         f"Additional Hints:\n{dynamic_steps_joined}\n\n"
         f"Generate the code for all three cases below."
     )
+
+# def build_prompt(
+#     story_block: str,
+#     method_map: dict,
+#     page_names: list[str],
+#     site_url: str,
+#     dynamic_steps: list[str]
+# ) -> str:
+#     page_method_section = "\n".join(
+#         f"# {p}:\n" + "\n".join(f"- def {m}" for m in method_map.get(p, [])) for p in page_names
+#     )
+#     dynamic_steps_joined = "\n".join(dynamic_steps)
+
+#     return (
+#         f"You are a senior QA automation engineer tasked to write Playwright Python tests for the following user stories:\n"
+#         f"{story_block}\n"
+#         f"\n"
+#         f"STRICT CONSTRAINTS:\n"
+#         f"- Use ONLY functions explicitly listed in the 'Page Object Methods' section below.\n"
+#         f"- DO NOT invent, guess, or generate any method names that are not in the list.\n"
+#         f"- If a certain step is not supported by the listed methods, SKIP that step (do not invent helper functions or workarounds).\n"
+#         f"- Never use classes, class-based page objects, or anything imported from 'page_objects'.\n"
+#         f"- DO NOT write or generate import statements.\n"
+#         f"- Use only the 'page' object with the allowed POM functions (e.g., enter_username(page, \"value\")).\n"
+#         f"- Do NOT write comments or explanations—output ONLY valid Python code, directly with the test function(s).\n"
+#         f"\n"
+#         f"YOUR TASK:\n"
+#         f"- Think like an expert functional QA tester.\n"
+#         f"- For the above user stories, generate ALL possible and meaningful test cases for:\n"
+#         f"    1. Functional testing:\n"
+#         f"       - Every relevant positive (valid), negative (invalid, missing), boundary, and alternative workflow scenario that can be covered using the available POM methods.\n"
+#         f"       - Multiple test cases per feature/step if meaningful.\n"
+#         f"    2. Smoke testing:\n"
+#         f"       - Minimal number of tests that validate critical end-to-end flows (happy path and essential variations).\n"
+#         f"       - Ensure all core workflows are covered.\n"
+#         f"    3. Regression testing:\n"
+#         f"       - All scenarios that could catch regressions (e.g., edge cases, blank or long field values, state changes, previously reported bugs, etc.), using only the available POM methods.\n"
+#         f"- Generate as many distinct, relevant, and non-duplicate test cases as possible for each test type (functional, smoke, regression), ensuring broad and deep coverage of the user stories and workflows.\n"
+#         f"- Name test functions as test_<testtype>_<scenario> (e.g., test_functional_valid_login, test_regression_blank_zipcode, test_smoke_end_to_end_checkout). Use unique, descriptive names for each case.\n"
+#         f"- Each test function must use only the allowed POM methods and the 'page' object.\n"
+#         f"- Do NOT define or generate any new helper functions/methods—use only those already defined in the allowed methods list.\n"
+#         f"\n"
+#         f"Site URL: {site_url}\n\n"
+#         f"Page Object Methods:\n{page_method_section}\n\n"
+#         f"Additional Hints:\n{dynamic_steps_joined}\n\n"
+#         f"Test Data Guidance:\n"
+#         f"- Cover normal, blank, long, special character, and invalid inputs wherever possible, based on POM method parameters.\n"
+#         f"- For every mandatory field or step, cover both valid and invalid or missing paths if feasible using only allowed methods.\n"
+#         f"\n"
+#         f"Final Output:\n"
+#         f"- Output ONLY valid Python test function code for all possible functional, smoke, and regression cases, as described above.\n"
+#         f"- No comments, no markdown, no imports, no explanations—just the test functions.\n"
+#         f"- Each test must use only the functions from the 'Page Object Methods' list, and must interact with the 'page' object.\n"
+#         f"\n"
+#         f"Begin."
+#     )
+
+# def build_prompt(
+#     story_block: str,
+#     method_map: dict,
+#     page_names: list[str],
+#     site_url: str,
+#     dynamic_steps: list[str]
+# ) -> str:
+#     page_method_section = "\n".join(
+#         f"# {p}:\n" + "\n".join(f"- def {m}" for m in method_map.get(p, [])) for p in page_names
+#     )
+#     dynamic_steps_joined = "\n".join(dynamic_steps)
+
+#     return (
+#         f"You are a senior QA automation engineer tasked to write Playwright Python tests for the following user stories:\n"
+#         f"{story_block}\n"
+#         f"\n"
+#         f"STRICT CONSTRAINTS:\n"
+#         f"- Use ONLY functions explicitly listed in the 'Page Object Methods' section below.\n"
+#         f"- DO NOT invent, guess, or generate any method names that are not in the list.\n"
+#         f"- If a certain step is not supported by the listed methods, SKIP that step (do not invent helper functions or workarounds).\n"
+#         f"- Never use classes, class-based page objects, or anything imported from 'page_objects'.\n"
+#         f"- DO NOT write or generate import statements.\n"
+#         f"- Use only the 'page' object with the allowed POM functions (e.g., enter_username(page, \"value\")).\n"
+#         f"\n"
+#         f"YOUR TASK:\n"
+#         f"- Think like an expert functional QA tester.\n"
+#         f"- For the above user stories, generate ALL possible and meaningful test cases for:\n"
+#         f"    1. Functional testing:\n"
+#         f"       - Every relevant positive (valid), negative (invalid, missing), boundary, and alternative workflow scenario that can be covered using the available POM methods.\n"
+#         f"       - Multiple test cases per feature/step if meaningful.\n"
+#         f"    2. Smoke testing:\n"
+#         f"       - Minimal number of tests that validate critical end-to-end flows (happy path and essential variations).\n"
+#         f"       - Ensure all core workflows are covered.\n"
+#         f"    3. Regression testing:\n"
+#         f"       - All scenarios that could catch regressions (e.g., edge cases, blank or long field values, state changes, previously reported bugs, etc.), using only the available POM methods.\n"
+#         f"- Generate as many distinct, relevant, and non-duplicate test cases as possible for each test type (functional, smoke, regression), ensuring broad and deep coverage of the user stories and workflows.\n"
+#         f"- Name test functions as test_<testtype>_<scenario> (e.g., test_functional_valid_login, test_regression_blank_zipcode, test_smoke_end_to_end_checkout). Use unique, descriptive names for each case.\n"
+#         f"- Each test function must use only the allowed POM methods and the 'page' object.\n"
+#         f"- Do NOT define or generate any new helper functions/methods—use only those already defined in the allowed methods list.\n"
+#         f"\n"
+#         f"Site URL: {site_url}\n\n"
+#         f"Page Object Methods:\n{page_method_section}\n\n"
+#         f"Additional Hints:\n{dynamic_steps_joined}\n\n"
+#         f"Test Data Guidance:\n"
+#         f"- Cover normal, blank, long, special character, and invalid inputs wherever possible, based on POM method parameters.\n"
+#         f"- For every mandatory field or step, cover both valid and invalid or missing paths if feasible using only allowed methods.\n"
+#         f"\n"
+#         f"IMPORTANT: For EVERY automation test function you generate, you must include a comment block immediately above the function in the following format:\n"
+#         f"    # Manual Steps:\n"
+#         f"    # 1. Step one\n"
+#         f"    # 2. Step two\n"
+#         f"    # ...\n"
+#         f"These manual steps must correspond exactly to the actions covered in that test function, written in clear step-by-step language, and should match the intended scenario (functional, smoke, or regression).\n"
+#         f"\n"
+#         f"Final Output:\n"
+#         f"- Output valid Python code for all possible functional, smoke, and regression test cases, as described above.\n"
+#         f"- Each test function must have the manual steps as a comment block immediately above it.\n"
+#         f"- No markdown, no explanations, no imports—just the test functions and their manual steps as comments.\n"
+#         f"\n"
+#         f"Begin."
+#     )
+
+# def build_prompt(
+#     story_block: str,
+#     method_map: dict,
+#     page_names: list[str],
+#     site_url: str,
+#     dynamic_steps: list[str]
+# ) -> str:
+#     page_method_section = "\n".join(
+#         f"// {p}:\n" + "\n".join(f"- function {m}" for m in method_map.get(p, [])) for p in page_names
+#     )
+#     dynamic_steps_joined = "\n".join(dynamic_steps)
+
+#     return (
+#         f"You are a senior QA automation engineer tasked to write Playwright TypeScript tests for the following user stories:\n"
+#         f"{story_block}\n"
+#         f"\n"
+#         f"STRICT CONSTRAINTS:\n"
+#         f"- Use ONLY functions explicitly listed in the 'Page Object Methods' section below.\n"
+#         f"- DO NOT invent, guess, or generate any function names that are not in the list.\n"
+#         f"- If a certain step is not supported by the listed functions, SKIP that step (do not invent helper functions or workarounds).\n"
+#         f"- Never use classes, class-based page objects, or anything imported from 'page_objects'.\n"
+#         f"- DO NOT write or generate import statements.\n"
+#         f"- Use only the 'page' object with the allowed POM functions (e.g., await enterUsername(page, \"value\")).\n"
+#         f"\n"
+#         f"YOUR TASK:\n"
+#         f"- Think like an expert functional QA tester.\n"
+#         f"- For the above user stories, generate ALL possible and meaningful test cases for:\n"
+#         f"    1. Functional testing:\n"
+#         f"       - Every relevant positive (valid), negative (invalid, missing), boundary, and alternative workflow scenario that can be covered using the available POM functions.\n"
+#         f"       - Multiple test cases per feature/step if meaningful.\n"
+#         f"    2. Smoke testing:\n"
+#         f"       - Minimal number of tests that validate critical end-to-end flows (happy path and essential variations).\n"
+#         f"       - Ensure all core workflows are covered.\n"
+#         f"    3. Regression testing:\n"
+#         f"       - All scenarios that could catch regressions (e.g., edge cases, blank or long field values, state changes, previously reported bugs, etc.), using only the available POM functions.\n"
+#         f"- Generate as many distinct, relevant, and non-duplicate test cases as possible for each test type (functional, smoke, regression), ensuring broad and deep coverage of the user stories and workflows.\n"
+#         f"- Name test functions as test<TypeType><Scenario> (e.g., testFunctionalValidLogin, testRegressionBlankZipcode, testSmokeEndToEndCheckout). Use unique, descriptive names for each case, following TypeScript camelCase naming conventions.\n"
+#         f"- Each test function must use only the allowed POM functions and the 'page' object.\n"
+#         f"- Do NOT define or generate any new helper functions/methods—use only those already defined in the allowed functions list.\n"
+#         f"\n"
+#         f"Site URL: {site_url}\n\n"
+#         f"// Page Object Methods:\n{page_method_section}\n\n"
+#         f"// Additional Hints:\n{dynamic_steps_joined}\n\n"
+#         f"// Test Data Guidance:\n"
+#         f"// - Cover normal, blank, long, special character, and invalid inputs wherever possible, based on POM function parameters.\n"
+#         f"// - For every mandatory field or step, cover both valid and invalid or missing paths if feasible using only allowed functions.\n"
+#         f"\n"
+#         f"IMPORTANT: For EVERY automation test function you generate, you must include a comment block immediately above the function in the following format:\n"
+#         f"    // Manual Steps:\n"
+#         f"    // 1. Step one\n"
+#         f"    // 2. Step two\n"
+#         f"    // ...\n"
+#         f"These manual steps must correspond exactly to the actions covered in that test function, written in clear step-by-step language, and should match the intended scenario (functional, smoke, or regression).\n"
+#         f"\n"
+#         f"Final Output:\n"
+#         f"- Output valid **TypeScript** code for all possible functional, smoke, and regression test cases, as described above.\n"
+#         f"- Each test function must have the manual steps as a comment block immediately above it.\n"
+#         f"- No markdown, no explanations, no imports—just the test functions and their manual steps as comments.\n"
+#         f"\n"
+#         f"Begin."
+#     )
+
+
 
 # def build_prompt(
 #     story_block: str,
