@@ -53,6 +53,7 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         except Exception as e:
             print(f"[WARN] classify_ocr_type failed for '{image_path}': {e}")
     ocr_type = ocr_type if ocr_type else "label"
+
     unique_name = generate_unique_name(page_name,intent,label_text, ocr_type)
 
     return sanitize_metadata({
@@ -90,9 +91,20 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         "external": False,   # ✅ ADDED LINE by Subhankar
     })
 
+# def generate_unique_name(page_name: str, intent: str, label_text: str, ocr_type: str) -> str:
+#     label = label_text.lower().strip().replace(" ", "_")
+#     return f"{page_name}_{intent}_{label}_{ocr_type}"
+
 def generate_unique_name(page_name: str, intent: str, label_text: str, ocr_type: str) -> str:
-    label = label_text.lower().strip().replace(" ", "_")
+    # Remove quotes from label_text
+    cleaned_label = (label_text or "").replace("'", "").replace('"', "")
+    # Truncate to 50 chars
+    cleaned_label = cleaned_label[:50]
+    # Lowercase and replace spaces with underscores
+    label = cleaned_label.lower().strip().replace(" ", "_")
     return f"{page_name}_{intent}_{label}_{ocr_type}"
+
+
 
 def sanitize_metadata(metadata: dict) -> dict:
     def safe_convert(value):

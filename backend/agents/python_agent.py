@@ -1,56 +1,29 @@
-from fastapi import APIRouter
-from pathlib import Path
+# agents/python_agent.py
+
+from mcp.protocol import MCPAgentBase, MCPResponse
+import json
 import re
-from services.test_generation_utils import collection, filter_all_pages
-from utils.smart_ai_utils import ensure_smart_ai_module
-from orchestrator.orchestrator import send_message
 
-
-router = APIRouter()
-
-def safe(s):
-    return re.sub(r'\W+', '_', s.lower()).strip('_')
-# Old
-# def build_method(entry):
+# def build_method(entry, language="python"):
+#     # Minimal example for textbox and button
 #     ocr_type = (entry.get("ocr_type") or "").lower()
-#     intent = (entry.get("intent") or "").lower()
-#     label_text = entry.get("label_text", "")
-#     unique_name = entry.get("unique_name")
+#     label = entry.get("label_text", "") or entry.get("text", "")
+#     unique_name = entry.get("unique_name", "element")
 
 #     if ocr_type == "textbox":
-#         func_name = f"enter_{safe(label_text or intent)}"
-#         code = (
-#             f"def {func_name}(page, value):\n"
-#             f"    page.smartAI('{unique_name}').fill(value)\n"
-#         )
+#         func = f"def enter_{label.lower().replace(' ', '_')}(page, value):\n"
+#         func += f"    page.smartAI('{unique_name}').fill(value)\n"
+#         return func
 #     elif ocr_type == "button":
-#         func_name = f"click_{safe(label_text or intent)}"
-#         code = (
-#             f"def {func_name}(page):\n"
-#             f"    page.smartAI('{unique_name}').click()\n"
-#         )
-#     elif ocr_type == "select":
-#         func_name = f"select_{safe(label_text or intent)}"
-#         code = (
-#             f"def {func_name}(page, value):\n"
-#             f"    page.smartAI('{unique_name}').select_option(value)\n"
-#         )
-#     elif ocr_type == "checkbox":
-#         func_name = f"toggle_{safe(label_text or intent)}"
-#         code = (
-#             f"def {func_name}(page):\n"
-#             f"    page.smartAI('{unique_name}').click()\n"
-#         )
+#         func = f"def click_{label.lower().replace(' ', '_')}(page):\n"
+#         func += f"    page.smartAI('{unique_name}').click()\n"
+#         return func
 #     else:
-#         func_name = f"verify_{safe(label_text or intent)}"
-#         code = (
-#             f"def {func_name}(page):\n"
-#             f"    assert page.smartAI('{unique_name}').is_visible()\n"
-#         )
-#     return code
+#         func = f"def verify_{label.lower().replace(' ', '_')}(page):\n"
+#         func += f"    assert page.smartAI('{unique_name}').is_visible()\n"
+#         return func
 
-# New
-def build_method(entry):
+def build_method(entry, language="python"):
     ocr_type = (entry.get("ocr_type") or "").lower()
     intent = (entry.get("intent") or "").lower()
     label_text = entry.get("label_text", "")
@@ -260,115 +233,30 @@ def build_method(entry):
         )
     return code
 
+def safe(s):
+    return re.sub(r'\W+', '_', s.lower()).strip('_')
 
-@router.post("/rag/generate-page-methods")
-def generate_page_methods():
-    ensure_smart_ai_module()
-    target_pages = filter_all_pages()
-    print("apis.generate_page_methods.py | target_pages = ", target_pages)
-    result = {}
+class PlaywrightPythonAgent(MCPAgentBase):
+    def generate_method(self, element_spec):
+        code = build_method(element_spec, language="python")
+        return MCPResponse(True, code)
 
-    # Setting the path and content for conftest.py 
-    def create_conftest_file():
-        conftest_content = '''import pytest
-import json
-from pathlib import Path
-from lib.smart_ai import patch_page_with_smartai
+    def generate_test(self, test_case_spec):
+        # Example: just stub out a test using the generated methods
+        method_calls = "\n    ".join(test_case_spec.get("steps", []))
+        code = f"def test_case(page):\n    {method_calls}\n"
+        return MCPResponse(True, code)
+    
+    def generate_page_file(self, payload):
+        entries = payload["entries"]
+        page_name = payload.get("page_name", "page")
+        header = (
+            "from lib.smart_ai import patch_page_with_smartai\n\n"
+            f"# Methods for page: {page_name}\n\n"
+        )
+        methods = [self.generate_method(e).payload for e in entries]
+        filename = f"{page_name}_page_methods.py"  # Python agent returns .py
+        code = header + "\n".join(methods)
+        return MCPResponse(True, {"filename": filename, "code": code})
 
-@pytest.fixture(autouse=True)
-def smartai_page(page):    
-    # Get the path to THIS FILE's directory
-    script_dir = Path(__file__).parent
-    # Go up one to 'src', then into 'metadata'
-    metadata_path = (script_dir.parent / "metadata" / "after_enrichment.json").resolve()
-
-    # print("Loading:", metadata_path)  # Debug, can remove
-
-    with open(metadata_path, "r") as f:
-        actual_metadata = json.load(f)
-    patch_page_with_smartai(page, actual_metadata)
-    return page
-'''
-
-        # Navigate from /apis/ to /generated_runs/src/tests
-        tests_dir = Path(__file__).parent.parent / "generated_runs" / "src" / "tests"
-        tests_dir.mkdir(parents=True, exist_ok=True)
-
-        conftest_path = tests_dir / "conftest.py"
-        conftest_path.write_text(conftest_content.strip())
-        # print(f"✅ conftest.py created at: {conftest_path}")
-    # Creating conftest.py
-    create_conftest_file()
-
-
-    for page in target_pages:
-        page_data = collection.get(where={"page_name": page})
-        entries = [r for r in page_data.get("metadatas", []) if r.get("label_text")]
-
-        # Use agent to generate code and filename
-        response = send_message("python", "generate_page_file", {"entries": entries, "page_name": page})
-        payload = response.payload   # This is a dict: {"filename": ..., "code": ...}
-
-        outdir = Path("generated_runs") / "src" / "pages"
-        outdir.mkdir(parents=True, exist_ok=True)
-        filename = outdir / payload["filename"]
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(payload["code"])
-
-        result[page] = {
-            "filename": str(filename),
-            "code": payload["code"]
-        }
-
-
-    # for page in target_pages:
-    #     page_data = collection.get(where={"page_name": page})
-    #     entries = [r for r in page_data.get("metadatas", []) if r.get("label_text")]
-        
-    #     # # Old
-    #     # method_blocks = [build_method(entry) for entry in entries]
-        
-    #     # # Using Agent
-    #     # method_blocks = []
-    #     # for entry in entries:
-    #     #     # Send a protocol message to the agent for each entry
-    #     #     response = send_message("python", "generate_method", entry)
-    #     #     if response.success:
-    #     #         method_blocks.append(response.payload)
-    #     #     else:
-    #     #         print(f"[Agent ERROR] {response.error}")
-
-    #     # -------- INCLUDE HEADER ------
-    #     # For PYTHON
-    #     response = send_message("python", "generate_page_file", {"entries": entries, "page_name": page})
-    #     code = response.payload
-
-    #     # For JAVASCRIPT
-    #     # response = send_message("typescript", "generate_page_file", {"entries": entries, "page_name": page})
-    #     # code = response.payload
-
-    #     # response = send_message('language', "generate_page_file", {"entries": entries, "page_name": page})
-    #     payload = response.payload   # This is a dict: {"filename": ..., "code": ...}
-    #     filename = outdir / payload["filename"]
-        
-    #     outdir = Path("generated_runs") / "src" / "pages"
-    #     outdir.mkdir(parents=True, exist_ok=True)
-    #     with open(filename, "w", encoding="utf-8") as f:
-    #         f.write(payload["code"])
-
-
-    #     # header = (
-    #     #     "from lib.smart_ai import patch_page_with_smartai\n\n" 
-    #     #     "# Assumes `page` has been patched already with patch_page_with_smartai(page, metadata)\n\n"
-    #     # )
-    #     # code = header + "\n".join(method_blocks)
-
-    #     with open(filename, "w", encoding="utf-8") as f:
-    #         f.write(code)
-
-    #     result[page] = {
-    #         "filename": str(filename),
-    #         "code": code
-    #     }
-
-    return result
+    

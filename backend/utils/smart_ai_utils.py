@@ -289,122 +289,123 @@ if __name__ == "__main__":
         # ------------------------------- login
         # try:
         #     page.smartAI('saucedemo_login_title_swag_labs_label').is_visible()
-        #     print("saucedemo_login_title_swag_labs_label is visible \n")
+        #     print("saucedemo_login_title_swag_labs_label is visible ")
         # except Exception as e:
         #     print(f"saucedemo_login_title_swag_labs_label error: {e}")
-        time.sleep(1)
+        # time.sleep(1)
+        
         try:
             page.smartAI('saucedemo_login_username_username_textbox').fill('standard_user')
-            print("Username filled successfully. \n")
+            print("Username filled successfully. ")
         except Exception as e:
-            print(f"Username fill error: {e}", "\n")
+            print(f"Username fill error: {e}", "")
         # time.sleep(1)
 
         try:
             page.smartAI('saucedemo_login_password_password_textbox').fill('secret_sauce')
-            print("Password filled successfully. \n")
+            print("Password filled successfully. ")
         except Exception as e:
-            print(f"Password fill error: {e}", "\n")
+            print(f"Password fill error: {e}", "")
         # time.sleep(1)
 
         try:
             page.smartAI('saucedemo_login_login_login_button').click()
-            print("Login button clicked. \n")
+            print("Login button clicked. ")
         except Exception as e:
-            print(f"Login click error: {e}", "\n")
+            print(f"Login click error: {e}", "")
         # time.sleep(1)
         # ----------------------------- inventory
         try:
             assert page.smartAI('saucedemo_inventory_product_list_products_label').is_visible()
-            print("Product verified. \n")
+            print("Product verified. ")
         except Exception as e:
-            print("Product verified error.", e, "\n")
+            print("Product verified error.", e, "")
         # time.sleep(1)
         
         try:            
             assert page.smartAI('saucedemo_inventory_product_name_sauce_labs_backpack_label').is_visible()
-            print("SauceLab Backpack verified. \n")
+            print("SauceLab Backpack verified. ")
         except Exception as e:
-            print("SauceLab Backpack verified error.", e, "\n")
+            print("SauceLab Backpack verified error.", e, "")
         # time.sleep(1)
         
         try:
             page.smartAI('saucedemo_inventory_add_to_cart_add_to_cart_button').click()
-            print("Add-To-Cart is clicked. \n")
+            print("Add-To-Cart is clicked. ")
         except Exception as e:
-            print("Add-To-Cart is clicked error.", e, "\n")
+            print("Add-To-Cart is clicked error.", e, "")
         # time.sleep(1)
         
         try:
             page.smartAI('saucedemo_inventory_go_to_cart_shopping_cart_link_button').click()
-            print("Shopping Cart is clicked. \n")
+            print("Shopping Cart is clicked. ")
         except Exception as e:
-            print("Shopping Cart is clicked error.", e, "\n")
+            print("Shopping Cart is clicked error.", e, "")
         # time.sleep(1)
         # ----------------------------- cart             
         try:
             assert page.smartAI('saucedemo_cart_header_your_cart_label').is_visible()
-            print("Your Cart Label verified. \n")
+            print("Your Cart Label verified. ")
         except Exception as e:
-            print("Your Cart Label verified error.", e, "\n")
+            print("Your Cart Label verified error.", e, "")
         # time.sleep(1)
 
         try:
             page.smartAI('saucedemo_cart_proceed_checkout_checkout_button').click()
-            print("Checkout clicked. \n")
+            print("Checkout clicked. ")
         except Exception as e:
-            print("Checkout clicked error.", e, "\n")
+            print("Checkout clicked error.", e, "")
         # time.sleep(1)
         
         # ----------------------------- checkout-info
         try:
             assert page.smartAI('saucedemo_checkout_info_instructions_checkout:_your_information_label').is_visible()
-            print("Checkout Info verified. \n")
+            print("Checkout Info verified. ")
         except Exception as e:
-            print("Checkout Info verified error.", e, "\n")
+            print("Checkout Info verified error.", e, "")
         # time.sleep(1)
         
         try:
             page.smartAI('saucedemo_checkout_info_first_name_first_name_textbox').fill('John')
-            print("First name filled. \n")
+            print("First name filled. ")
         except Exception as e:
-            print("First name filled error.", e, "\n")
+            print("First name filled error.", e, "")
         # time.sleep(1)
         
         try:
             page.smartAI('saucedemo_checkout_info_last_name_last_name_textbox').fill('Doe')
-            print("Last name filled. \n")
+            print("Last name filled. ")
         except Exception as e:
-            print("Last name filled error.", e, "\n")
+            print("Last name filled error.", e, "")
         # time.sleep(1)
         
         try:
             page.smartAI('saucedemo_checkout_info_zip_code_zip/postal_code_textbox').fill('123456')
-            print("zip code filled. \n")
+            print("zip code filled. ")
         except Exception as e:
-            print("zip code filled error.", e, "\n")
+            print("zip code filled error.", e, "")
         # time.sleep(1)
         
         try:
             page.smartAI('saucedemo_checkout_info_continue_continue_button').click()
-            print("Continue button clicked. \n")
+            print("Continue button clicked. ")
         except Exception as e:
-            print("Continue button not clicked.", e, "\n")
+            print("Continue button not clicked.", e, "")
         # time.sleep(1)
         
         # ------------------------------- checkout-overview
         try:
             assert page.smartAI('saucedemo_checkout_overview_page_title_checkout:_overview_label').is_visible()
-            print("Checkout Overview verified. \n")
+            print("Checkout Overview verified. ")
         except Exception as e:
-            print("Checkout Overview verified error.", e, "\n")
+            print("Checkout Overview verified error.", e, "")
         # time.sleep(1)
         
         try:
             page.smartAI('saucedemo_checkout_overview_finish_finish_button').click()
-            print("Finish button clicked.\n")
+            print("Finish button clicked.")
         except Exception as e:
-            print("Finish button not clicked.", e, "\n")
+            print("Finish button not clicked.", e, "")
         # time.sleep(1)
         
 
@@ -414,6 +415,7 @@ if __name__ == "__main__":
         browser.close()
 
 """
+
 
 
 def ensure_smart_ai_module():
