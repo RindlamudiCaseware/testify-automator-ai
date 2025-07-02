@@ -18,14 +18,14 @@ BROWSER: Browser = None
 PAGE: Page = None
 PLAYWRIGHT = None
 CURRENT_PAGE_NAME: str = "unknown_page"
-
+ 
 class LaunchRequest(BaseModel):
     url: str
 class CaptureRequest(BaseModel):
     pass
 class PageNameSetRequest(BaseModel):
     page_name: str
-
+ 
 async def send_enrichment_requests(page_name: str):
     from httpx import AsyncClient
     async with AsyncClient() as client:
@@ -51,6 +51,7 @@ async def send_enrichment_requests(page_name: str):
                 return {"status": "fail", "error": "Empty or invalid response"}
         except Exception as e:
             print(f"🔥🔥🔥Error from: await resp.aread(): {e}")
+            print(f"🔥🔥🔥Error from: await resp.aread(): {e}")
             return {"status": "fail", "error": f"Error reading response: {e}"}
         
         # print("[DEBUG] decoded_json_data:", decoded_json_data)
@@ -58,30 +59,31 @@ async def send_enrichment_requests(page_name: str):
             return json.loads(decoded_json_data)
         except Exception as e:
             print("🔥🔥🔥🔥[ERROR] JSON parsing failed:", e)
+            print("🔥🔥🔥🔥[ERROR] JSON parsing failed:", e)
             return {"status": "fail", "error": "Response parsing failed : {e}"}
 
 @router.post("/launch-browser")
 async def launch_browser(req: LaunchRequest):
     global PLAYWRIGHT, BROWSER, PAGE
-
+ 
     try:
         PLAYWRIGHT = await async_playwright().start()
         BROWSER = await PLAYWRIGHT.chromium.launch(headless=False, slow_mo=100)
         PAGE = await BROWSER.new_page()
         await PAGE.goto(req.url)
-
+ 
         async def send_enrichment_wrapper(source, page_name):
             print("[DEBUG] Triggering enrichment for:", page_name)
             result = await send_enrichment_requests(page_name)
             # print("[DEBUG] Enrichment result:", result)
             return json.dumps(result)
-
+ 
         await PAGE.expose_binding("sendEnrichmentRequests", send_enrichment_wrapper)
-
+ 
         await PAGE.evaluate("""
         if (!window._ocrShortcutRegistered) {
             window._ocrShortcutRegistered = true;
-
+ 
             const modal = document.createElement('div');
             modal.innerHTML = `
                 <div id="ocrModal" style="position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border:2px solid black;z-index:9999;display:none;">
@@ -93,7 +95,7 @@ async def launch_browser(req: LaunchRequest):
                 </div>
             `;
             document.body.appendChild(modal);
-
+ 
             async function loadAvailablePages() {
                 try {
                     const res = await fetch('http://localhost:8001/available-pages');
@@ -110,7 +112,7 @@ async def launch_browser(req: LaunchRequest):
                     alert("❌ Failed to load available pages.");
                 }
             }
-
+ 
             window.triggerEnrichment = async function() {
                 const pageName = document.getElementById('pageDropdown').value;
                 const messageBox = document.getElementById('enrichmentMessageBox');
@@ -119,19 +121,20 @@ async def launch_browser(req: LaunchRequest):
                     messageBox.style.color = "red";
                     return;
                 }
-
+ 
                 messageBox.innerText = "⏳ Enrichment in progress...";
                 messageBox.style.color = "blue";
                 messageBox.offsetHeight;
-
+ 
                 try {
-                    
+                   
                     const resultStr = await window.sendEnrichmentRequests(pageName);
                     const result = JSON.parse(resultStr);    
+                    const result = JSON.parse(resultStr);    
                     console.log("✅ Matched:", result);
-
+ 
                     if (result.count === 0) {
-                        messageBox.innerText = "❌ Enrichment failed: ${result.count} elements matched."; 
+                        messageBox.innerText = "❌ Enrichment failed: ${result.count} elements matched.";
                         messageBox.style.color = "red";
                     } else {
                         messageBox.innerText = `✅ Enriched ${result.count} elements successfully.`;
@@ -146,6 +149,7 @@ async def launch_browser(req: LaunchRequest):
                                             
             document.addEventListener('keydown', function(e) {
                 if (e.altKey && e.key === 'q') {
+                if (e.altKey && e.key === 'q') {
                     const modal = document.getElementById('ocrModal');
                     modal.style.display = 'block';
                     loadAvailablePages();
@@ -153,16 +157,16 @@ async def launch_browser(req: LaunchRequest):
             });
         }
         """)
-
+ 
         return {
             "message": f"✅ Browser launched and navigated to {req.url}. Press Alt+E to enrich any page."
         }
-
+ 
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
+ 
 @router.post("/set-current-page-name")
 async def set_page_name(req: PageNameSetRequest):
     global CURRENT_PAGE_NAME
@@ -178,13 +182,13 @@ async def capture_from_keyboard(_: CaptureRequest):
         print(f"[INFO] Enrichment triggered for: {page_name}")
         if PAGE.is_closed():
             raise HTTPException(status_code=500, detail="❌ Cannot extract. Page is already closed.")
-
+ 
         dom_data = await extract_dom_metadata(PAGE, page_name)
 
         print("[DEBUG] DOM elements extracted:", len(dom_data))
 
         ocr_data = collection.get(where={"page_name": page_name})["metadatas"]
-        
+       
         # Create folder for debug metadata dump added by subhankar
         debug_metadata_dir = Path("generated_runs") / "src" / "ocr-dom-metadata"
         debug_metadata_dir.mkdir(parents=True, exist_ok=True)                 
@@ -194,50 +198,50 @@ async def capture_from_keyboard(_: CaptureRequest):
         # Write OCR data as raw text added by subhankar
         with open(debug_metadata_dir / f"ocr_data_{page_name}.txt", "w", encoding="utf-8") as f:
             f.write(pprint.pformat(ocr_data))
-        
+       
         updated_matches = match_and_update(ocr_data, dom_data, collection)
-    
+   
         # Write after_match_and_update data as raw text added by subhankar
         with open(debug_metadata_dir / f"after_match_and_update{page_name}.txt", "w", encoding="utf-8") as f:
             f.write(pprint.pformat(updated_matches))
-
+ 
         standardized_matches = [
             build_standard_metadata(m, page_name, image_path="", source_url=PAGE.url)
             for m in updated_matches
         ]
-        
+       
         # Write standardized_matches data as raw text added by subhankar
         with open(debug_metadata_dir / f"standardized_matchesd{page_name}.txt", "w", encoding="utf-8") as f:
             f.write(pprint.pformat(standardized_matches))
-
+ 
         set_last_match_result(standardized_matches)
-
+ 
         # Save enriched metadata as JSON
         metadata_dir = Path("generated_runs") / "src" / "metadata"
         metadata_dir.mkdir(parents=True, exist_ok=True)
         outfile = metadata_dir / f"after_enrichment_{page_name}.json"
         with open(outfile, "w", encoding="utf-8") as f:
             json.dump(standardized_matches, f, indent=2)
-
+ 
         # Save ALL current ChromaDB metadata as one file in the same folder
         chroma_all_data = collection.get()
         chroma_all_metadatas = chroma_all_data.get("metadatas", [])
         all_chroma_file = metadata_dir / "after_enrichment.json"
         with open(all_chroma_file, "w", encoding="utf-8") as f:
             json.dump(chroma_all_metadatas, f, indent=2)
-
+ 
         return {
             "status": "success",
             "message": f"[Keyboard Trigger] Enriched {len(standardized_matches)} elements for page: {page_name}",
             "matched_data": standardized_matches,
             "count": len(standardized_matches)
         }
-
+ 
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
+ 
 @router.get("/available-pages")
 async def list_page_names():
     try:
@@ -246,13 +250,13 @@ async def list_page_names():
         return {"pages": page_names}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+ 
 @router.on_event("shutdown")
 async def shutdown_browser():
     global PLAYWRIGHT
     if PLAYWRIGHT:
         await PLAYWRIGHT.stop()
-
+ 
 @router.get("/latest-match-result")
 async def get_latest_match_result():
     try:
@@ -267,5 +271,5 @@ async def get_latest_match_result():
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
+ 
 __all__ = ["router"]
