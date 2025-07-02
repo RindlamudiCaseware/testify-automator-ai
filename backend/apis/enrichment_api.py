@@ -79,85 +79,161 @@ async def launch_browser(req: LaunchRequest):
             return json.dumps(result)
  
         await PAGE.expose_binding("sendEnrichmentRequests", send_enrichment_wrapper)
+
+        # await PAGE.evaluate("""
+        # if (!window._ocrShortcutRegistered) {
+        #     window._ocrShortcutRegistered = true;
  
-        await PAGE.evaluate("""
-        if (!window._ocrShortcutRegistered) {
-            window._ocrShortcutRegistered = true;
+        #     const modal = document.createElement('div');
+        #     modal.innerHTML = `
+        #         <div id="ocrModal" style="position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border:2px solid black;z-index:9999;display:none;">
+        #             <label>Enter Page Name:</label><br/>
+        #             <select id="pageDropdown" style="margin:5px;padding:5px;width:250px;"></select><br/>
+        #             <button onclick="triggerEnrichment()">Enrich</button>
+        #             <button onclick="document.getElementById('ocrModal').style.display='none'">Close</button>
+        #             <div id="enrichmentMessageBox" style="margin-top:10px;font-weight:bold;color:green;"></div>
+        #         </div>
+        #     `;
+        #     document.body.appendChild(modal);
  
-            const modal = document.createElement('div');
-            modal.innerHTML = `
-                <div id="ocrModal" style="position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border:2px solid black;z-index:9999;display:none;">
-                    <label>Enter Page Name:</label><br/>
-                    <select id="pageDropdown" style="margin:5px;padding:5px;width:250px;"></select><br/>
-                    <button onclick="triggerEnrichment()">Enrich</button>
-                    <button onclick="document.getElementById('ocrModal').style.display='none'">Close</button>
-                    <div id="enrichmentMessageBox" style="margin-top:10px;font-weight:bold;color:green;"></div>
-                </div>
-            `;
-            document.body.appendChild(modal);
+        #     async function loadAvailablePages() {
+        #         try {
+        #             const res = await fetch('http://localhost:8001/available-pages');
+        #             const data = await res.json();
+        #             const dropdown = document.getElementById('pageDropdown');
+        #             dropdown.innerHTML = "";
+        #             for (const page of data.pages) {
+        #                 const option = document.createElement("option");
+        #                 option.value = page;
+        #                 option.innerText = page;
+        #                 dropdown.appendChild(option);
+        #             }
+        #         } catch (err) {
+        #             alert("❌ Failed to load available pages.");
+        #         }
+        #     }
  
-            async function loadAvailablePages() {
-                try {
-                    const res = await fetch('http://localhost:8001/available-pages');
-                    const data = await res.json();
-                    const dropdown = document.getElementById('pageDropdown');
-                    dropdown.innerHTML = "";
-                    for (const page of data.pages) {
-                        const option = document.createElement("option");
-                        option.value = page;
-                        option.innerText = page;
-                        dropdown.appendChild(option);
-                    }
-                } catch (err) {
-                    alert("❌ Failed to load available pages.");
-                }
-            }
+        #     window.triggerEnrichment = async function() {
+        #         const pageName = document.getElementById('pageDropdown').value;
+        #         const messageBox = document.getElementById('enrichmentMessageBox');
+        #         if (!pageName) {
+        #             messageBox.innerText = "❌ Page name is required.";
+        #             messageBox.style.color = "red";
+        #             return;
+        #         }
  
-            window.triggerEnrichment = async function() {
-                const pageName = document.getElementById('pageDropdown').value;
-                const messageBox = document.getElementById('enrichmentMessageBox');
-                if (!pageName) {
-                    messageBox.innerText = "❌ Page name is required.";
-                    messageBox.style.color = "red";
-                    return;
-                }
+        #         messageBox.innerText = "⏳ Enrichment in progress...";
+        #         messageBox.style.color = "blue";
+        #         messageBox.offsetHeight;
  
-                messageBox.innerText = "⏳ Enrichment in progress...";
-                messageBox.style.color = "blue";
-                messageBox.offsetHeight;
- 
-                try {
+        #         try {
                    
-                    const resultStr = await window.sendEnrichmentRequests(pageName);
-                    const result = JSON.parse(resultStr);    
-                    const result = JSON.parse(resultStr);    
-                    console.log("✅ Matched:", result);
+        #             const resultStr = await window.sendEnrichmentRequests(pageName);
+        #             const result = JSON.parse(resultStr);    
+        #             const result = JSON.parse(resultStr);    
+        #             console.log("✅ Matched:", result);
  
-                    if (result.count === 0) {
-                        messageBox.innerText = "❌ Enrichment failed: ${result.count} elements matched.";
-                        messageBox.style.color = "red";
-                    } else {
-                        messageBox.innerText = `✅ Enriched ${result.count} elements successfully.`;
-                        messageBox.style.color = "green";
-                    }
-                } catch (err) {
-                    console.error("Enrichment Error:", err);
-                    messageBox.innerText = "❌ Enrichment failed: " + err.message + "sg";
-                    messageBox.style.color = "red";
-                }
-            };
+        #             if (result.count === 0) {
+        #                 messageBox.innerText = "❌ Enrichment failed: ${result.count} elements matched.";
+        #                 messageBox.style.color = "red";
+        #             } else {
+        #                 messageBox.innerText = `✅ Enriched ${result.count} elements successfully.`;
+        #                 messageBox.style.color = "green";
+        #             }
+        #         } catch (err) {
+        #             console.error("Enrichment Error:", err);
+        #             messageBox.innerText = "❌ Enrichment failed: " + err.message + "sg";
+        #             messageBox.style.color = "red";
+        #         }
+        #     };
                                             
-            document.addEventListener('keydown', function(e) {
-                if (e.altKey && e.key === 'q') {
-                if (e.altKey && e.key === 'q') {
-                    const modal = document.getElementById('ocrModal');
-                    modal.style.display = 'block';
-                    loadAvailablePages();
+        #     document.addEventListener('keydown', function(e) {
+        #         if (e.altKey && (e.key === 'q' || e.key === 'Q')) {  // Case-insensitive
+        #             const modal = document.getElementById('ocrModal');
+        #             modal.style.display = 'block';
+        #             loadAvailablePages();
+        #         }
+        #     });
+
+        # }
+        # """)
+
+        await PAGE.evaluate("""
+            if (!window._ocrShortcutRegistered) {
+                window._ocrShortcutRegistered = true;
+                console.log('[SmartAI] Modal enrichment JS injected');
+
+                const modal = document.createElement('div');
+                modal.innerHTML = `
+                    <div id="ocrModal" style="position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border:2px solid black;z-index:9999;display:none;">
+                        <label>Enter Page Name:</label><br/>
+                        <select id="pageDropdown" style="margin:5px;padding:5px;width:250px;"></select><br/>
+                        <button onclick="triggerEnrichment()">Enrich</button>
+                        <button onclick="document.getElementById('ocrModal').style.display='none'">Close</button>
+                        <div id="enrichmentMessageBox" style="margin-top:10px;font-weight:bold;color:green;"></div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                async function loadAvailablePages() {
+                    try {
+                        const res = await fetch('http://localhost:8001/available-pages');
+                        const data = await res.json();
+                        const dropdown = document.getElementById('pageDropdown');
+                        dropdown.innerHTML = "";
+                        for (const page of data.pages) {
+                            const option = document.createElement("option");
+                            option.value = page;
+                            option.innerText = page;
+                            dropdown.appendChild(option);
+                        }
+                    } catch (err) {
+                        alert("❌ Failed to load available pages.");
+                    }
                 }
-            });
-        }
-        """)
- 
+
+                window.triggerEnrichment = async function() {
+                    const pageName = document.getElementById('pageDropdown').value;
+                    const messageBox = document.getElementById('enrichmentMessageBox');
+                    if (!pageName) {
+                        messageBox.innerText = "❌ Page name is required.";
+                        messageBox.style.color = "red";
+                        return;
+                    }
+
+                    messageBox.innerText = "⏳ Enrichment in progress...";
+                    messageBox.style.color = "blue";
+                    messageBox.offsetHeight;
+
+                    try {
+                        const resultStr = await window.sendEnrichmentRequests(pageName);
+                        const result = JSON.parse(resultStr);
+                        console.log("✅ Matched:", result);
+
+                        if (result.count === 0) {
+                            messageBox.innerText = `❌ Enrichment failed: ${result.count} elements matched.`;
+                            messageBox.style.color = "red";
+                        } else {
+                            messageBox.innerText = `✅ Enriched ${result.count} elements successfully.`;
+                            messageBox.style.color = "green";
+                        }
+                    } catch (err) {
+                        console.error("Enrichment Error:", err);
+                        messageBox.innerText = "❌ Enrichment failed: " + (err.message || err);
+                        messageBox.style.color = "red";
+                    }
+                };
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.altKey && (e.key === 'q' || e.key === 'Q')) {
+                        const modal = document.getElementById('ocrModal');
+                        modal.style.display = 'block';
+                        loadAvailablePages();
+                    }
+                });
+            }
+            """)
+
         return {
             "message": f"✅ Browser launched and navigated to {req.url}. Press Alt+E to enrich any page."
         }
