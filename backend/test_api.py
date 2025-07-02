@@ -94,12 +94,12 @@ async def test_ui_vision(zipfile_upload: UploadFile = File(...)):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_zip:
             tmp_zip.write(await zipfile_upload.read())
             tmp_zip_path = tmp_zip.name
-            logger.debug(f"📦 Temp ZIP saved at: {tmp_zip_path}")
+            # logger.debug(f"📦 Temp ZIP saved at: {tmp_zip_path}")
 
         with zipfile.ZipFile(tmp_zip_path, 'r') as zip_ref:
             with tempfile.TemporaryDirectory() as extract_dir:
                 zip_ref.extractall(extract_dir)
-                logger.debug(f"📂 Extracted files to: {extract_dir}")
+                # logger.debug(f"📂 Extracted files to: {extract_dir}")
 
                 image_files = [
                     os.path.join(extract_dir, f)
@@ -111,7 +111,7 @@ async def test_ui_vision(zipfile_upload: UploadFile = File(...)):
                     with open(image_path, "rb") as img_file:
                         image_base64 = base64.b64encode(img_file.read()).decode("utf-8")
 
-                    logger.debug(f"🧠 Sending image: {os.path.basename(image_path)} to OpenAI")
+                    # logger.debug(f"🧠 Sending image: {os.path.basename(image_path)} to OpenAI")
 
                     try:
                         client = openai.OpenAI()
@@ -137,10 +137,10 @@ async def test_ui_vision(zipfile_upload: UploadFile = File(...)):
 
                         output = response.choices[0].message.content.strip()
                         results[os.path.basename(image_path)] = output
-                        logger.debug(f"✅ GPT-4o Output for {os.path.basename(image_path)}:\n{output}")
+                        # logger.debug(f"✅ GPT-4o Output for {os.path.basename(image_path)}:\n{output}")
 
                     except Exception as gpt_error:
-                        logger.error(f"❌ Failed on {image_path}: {gpt_error}")
+                        # logger.error(f"❌ Failed on {image_path}: {gpt_error}")
                         results[os.path.basename(image_path)] = f"ERROR: {str(gpt_error)}"
 
     except Exception as e:

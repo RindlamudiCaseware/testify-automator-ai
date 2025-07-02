@@ -62,84 +62,164 @@ async def extract_dom_metadata(page: Page, page_name: str) -> List[Dict[str, Any
         print("[❌] Attempted to access a closed page.")
         return []
 
-    elements = await page.locator("body *").all()
+    # elements = await page.locator("body *").all()
+    # This selector matches all elements under <body> EXCEPT anything inside #ocrModal
+    elements = await page.locator("body *:not(#ocrModal *):not(#ocrModal)").all()
+
+    print(f"[DEBUG] Got {len(elements)} locator from dom except ocrModal")
+    
+    output_lines = []
     data = []
-        
-    for element in elements:
+    output_lines.append(f"All DOM elements")
+    for i, elem in enumerate(elements):
         try:
-            if await element.is_visible():
-                tag_name = await element.evaluate("el => el.tagName.toLowerCase()")
-                bounding_box = await element.bounding_box()
+            if await elem.is_visible():            
+                tag = await elem.evaluate("e => e.tagName.toLowerCase()")
+                text = await elem.evaluate("e => e.textContent.toLowerCase()")
+                elem_id = await elem.get_attribute("id")
+                elem_class = await elem.get_attribute("class")
+                placeholder = await elem.get_attribute("placeholder")
+                input_type = await elem.get_attribute("type") if tag and tag.lower() == "input" else ""
+                attrs = await elem.evaluate("e => { let a = {}; for (let attr of e.attributes) { a[attr.name] = attr.value; } return a; }")
+                value = attrs.get('value', "")
+                outer_html = await elem.evaluate("e => e.outerHTML")
+                visible = await elem.is_visible()
+                enable = await elem.is_enabled()
 
-                if not tag_name or not bounding_box:
+                editable = False
+                if tag and tag.lower() in ("input", "textarea", "select"):
+                    editable = await elem.is_editable()
+                else:
+                    contenteditable = await elem.get_attribute("contenteditable")
+                    if contenteditable == "true":
+                        editable = await elem.is_editable()
+                bounding_box = await elem.bounding_box()
+
+                element_lines = [
+                    f"Element {i+1}:",
+                    f"  page_name:      {page_name}",
+                    f"  tag_name:       {tag or ''}",
+                    f"  text:           {text.strip() if text else ''}",
+                    f"  id:             {elem_id or ''}",
+                    f"  class:          {elem_class or ''}",
+                    f"  value:          {value or ''}",
+                    f"  placeholder:    {placeholder or ''}",
+                    f"  type:           {input_type or ''}",
+                    f"  attributes:     {attrs or ''}",
+                    f"  enable?         {enable or ''}",
+                    f"  visible?        {visible or ''}",
+                    f"  editable?       {editable or ''}",
+                    f"  HTML:           {outer_html[:120]}{'...' if outer_html and len(outer_html) > 120 else ''}",
+                    "-" * 60
+                ]
+                output_lines.extend(element_lines)
+
+                # If any of these fields are present, append the data
+                if not (tag or text or placeholder or value):
                     continue
-
-                text = (await element.text_content() or "").strip()
-                placeholder = await element.get_attribute("placeholder") or ""
-                placeholder = placeholder.strip()
-
-                final_text = text if text else placeholder
-                if not final_text:
-                    continue
-
                 data.append({
-                    "page_name": page_name,
-                    "tag_name": tag_name,
-                    "text": text,
-                    "value": await element.get_attribute("value") or "",
-                    "placeholder": placeholder,
-                    "x": bounding_box["x"],
-                    "y": bounding_box["y"],
-                    "width": bounding_box["width"],
-                    "height": bounding_box["height"]
+                    "page_name": page_name or "",
+                    "tag_name": tag or "",
+                    "text": text or "",
+                    "class": elem_class or "",
+                    "value": value or "",
+                    "placeholder": placeholder or "",
+                    "type": input_type or "",
+                    "enable": enable,        # bool (True/False) is fine!
+                    "visible": visible,      # bool (True/False) is fine!
+                    "editable": editable,    # bool (True/False) is fine!
+                    "x": bounding_box["x"] if bounding_box and bounding_box.get("x") is not None else "",
+                    "y": bounding_box["y"] if bounding_box and bounding_box.get("y") is not None else "",
+                    "width": bounding_box["width"] if bounding_box and bounding_box.get("width") is not None else "",
+                    "height": bounding_box["height"] if bounding_box and bounding_box.get("height") is not None else "",
                 })
 
-        except Exception as inner_error:
-            print(f"[⚠️] Skipping element due to error: {inner_error}")
+        except Exception as e:
+            print(f"[⚠️] Skipping element {i+1} due to error: {e}")
+            output_lines.append(f"[⚠️] Skipping element {i+1} due to error: {e}")
             continue
+
+    # Write all info to a file
+    from pathlib import Path
+    debug_metadata_dir = Path("generated_runs") / "src" / "ocr-dom-metadata"
+    debug_metadata_dir.mkdir(parents=True, exist_ok=True)
+    out_file = debug_metadata_dir / f"dom_elements_{page_name}.txt"
+    with open(out_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(output_lines))
+        
+    print(f"[INFO] DOM extracted element data saved to {out_file}")    
+    print("[DEBUG] DOM DATA Length: ", len(data))
 
     return data
 
 
-    # for element in elements:
-    #     try:
-    #         if await element.is_visible():
-    #             tag_name = await element.evaluate("el => el.tagName")
-    #             text = await element.text_content()
-    #             bounding_box = await element.bounding_box()
-    #             place_holder=await element.get_by_placeholder()
+def match_and_update(ocr_data, dom_data, collection, text_thresh=0.5, bbox_thresh=300):
+    global LAST_MATCHED_RESULTS
+    matched_records = []
 
+    print(f"[DEBUG] Matching {len(ocr_data)} OCRs with {len(dom_data)} DOMs")
 
-    #             if not tag_name or not text or not bounding_box or not place_holder:
-    #                 continue
-                
-    #             # text_or_placeholder = text if text else place_holder
-    #             if text:
-    #                 data.append({
-    #                     "page_name": page_name,
-    #                     "tag_name": tag_name,
-    #                     "text": text.strip(),
-    #                     "x": bounding_box["x"],
-    #                     "y": bounding_box["y"],
-    #                     "width": bounding_box["width"],
-    #                     "height": bounding_box["height"]
-    #                 })
-    #             else:
-    #                  data.append({
-    #                 "page_name": page_name,
-    #                 "tag_name": tag_name,
-    #                 "placeholder": place_holder.strip(),
-    #                 "x": bounding_box["x"],
-    #                 "y": bounding_box["y"],
-    #                 "width": bounding_box["width"],
-    #                 "height": bounding_box["height"]
-    #             })
+    for ocr in ocr_data:
+        if not ocr.get("external"):
+            if not ocr.get("label_text") or not ocr.get("bbox"):
+                print(f"[SKIP] OCR missing label_text or bbox: {ocr}")
+                continue
 
-    #     except Exception as inner_error:
-    #         print(f"[⚠️] Skipping element due to error: {inner_error}")
-    #         continue
+            best_match = None
+            best_score = 0.0
 
-    # return data
+            for dom in dom_data:            
+                dom_text = dom.get("text", "") or dom.get("placeholder", "") or dom.get("value")
+                if not dom_text:
+                    continue
+
+                sim = text_similarity(ocr["text"].lower(), dom_text.lower())
+
+                if sim >= text_thresh and sim > best_score:
+                    best_match = dom
+                    best_score = sim                
+
+            if best_match:
+                updated = ocr.copy()
+                updated.update({
+                    "tag_name": best_match.get("tag_name", ""),
+                    "label_text": best_match.get("text") or best_match.get("placeholder") or best_match.get("value") or "",
+                    "dom-id": best_match.get("id", ""),
+                    "dom_class": best_match.get("class", ""),
+                    "value": best_match.get("value", ""),
+                    "placeholder": best_match.get("placeholder", ""),
+                    "type": best_match.get("type", ""),
+                    # "attributes": best_match.get("attributes", ""),
+                    "enable": best_match.get("enable", ""),
+                    "visible": best_match.get("visible", ""),
+                    "editable": best_match.get("editable", ""),
+                    
+                    "x": best_match.get("x", ""),
+                    "y": best_match.get("y", ""),
+                    "width": best_match.get("width", ""),
+                    "height": best_match.get("height", ""),
+                    "dom_matched": True,
+                    "match_timestamp": datetime.utcnow().isoformat()
+                })
+                # Set label_text with your preferred fallback order
+                updated["label_text"] = (
+                    (best_match.get("text")).strip() or
+                    (best_match.get("placeholder")).strip() or
+                    (best_match.get("value")).strip() or
+                    ""
+                )
+
+                collection.upsert(
+                    ids=[updated["id"]],
+                    documents=[updated["label_text"]],
+                    metadatas=[updated],
+                )
+                matched_records.append(updated)
+
+    LAST_MATCHED_RESULTS = matched_records
+    print(f"[✅] Matched {len(matched_records)} elements.")
+    return matched_records
+
 
 
 # ✅ Match and update OCR data with DOM data
@@ -266,64 +346,3 @@ async def extract_dom_metadata(page: Page, page_name: str) -> List[Dict[str, Any
 #     print(f"[DEBUG] Final matched_records = {len(matched_records)}")
 #     return matched_records
 
-
-
-def match_and_update(ocr_data, dom_data, collection, text_thresh=0.5, bbox_thresh=300):
-    global LAST_MATCHED_RESULTS
-    matched_records = []
-
-    print(f"[DEBUG] Matching {len(ocr_data)} OCRs with {len(dom_data)} DOMs")
-
-    for ocr in ocr_data:
-        if not ocr.get("label_text") or not ocr.get("bbox"):
-            print(f"[SKIP] OCR missing label_text or bbox: {ocr}")
-            continue
-
-        ocr_text = ocr["label_text"].strip().lower()
-        best_match = None
-        best_score = 0.0
-
-        for dom in dom_data:
-            
-            # dom_text = dom.get("text", "") or dom.get("placeholder", "")
-            dom_text = dom.get("text", "")
-            if not dom_text.strip():
-                dom_text = dom.get("placeholder", "")
-            if not dom_text:
-                continue
-
-            sim = text_similarity(ocr["text"].lower(), dom_text.lower())
-            # dist = bbox_distance(ocr["bbox"], {"x": dom["x"], "y": dom["y"]})
-
-            # print(f"[CHECK] '{ocr['text']}' vs '{dom_text}' | sim={sim:.2f} dist={dist:.1f}")
-
-            if sim >= text_thresh and sim > best_score:
-                best_match = dom
-                best_score = sim
-                
-
-        if best_match:
-            updated = ocr.copy()
-            updated.update({
-                "tag_name": best_match.get("tag_name", ""),
-                "x": best_match.get("x", ""),
-                "y": best_match.get("y", ""),
-                "width": best_match.get("width", ""),
-                "height": best_match.get("height", ""),
-                "placeholder": best_match.get("placeholder", ""),
-                "value": best_match.get("value", ""),
-                "text": best_match.get("text", ""),
-                "dom_matched": True,
-                "match_timestamp": datetime.utcnow().isoformat()
-            })
-
-            collection.upsert(
-                ids=[updated["id"]],
-                documents=[updated["label_text"]],
-                metadatas=[updated],
-            )
-            matched_records.append(updated)
-
-    LAST_MATCHED_RESULTS = matched_records
-    print(f"[✅] Matched {len(matched_records)} elements.")
-    return matched_records

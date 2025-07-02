@@ -7,6 +7,7 @@ from PIL import Image
 import os, zipfile, tempfile, json, logging
 from dotenv import load_dotenv
 from logic.image_text_extractor import process_image_gpt
+# from logic.image_text_extractor import process_image_paddleocr
 from services.graph_service import build_dependency_graph
 from utils.match_utils import normalize_page_name
 from config.settings import DATA_PATH
@@ -100,11 +101,15 @@ async def upload_image(
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 DEBUG_LOG_PATH = f"./data/metadata_logs_{timestamp}.json"
 
+                # GPT image extraction
                 metadata_list = await process_image_gpt(
                     img, image_name,
                     image_path=permanent_image_path,
                     debug_log_path=DEBUG_LOG_PATH
                 )
+
+                # # PaddleOCR image extraction
+                # metadata_list = await process_image_paddleocr(img, image_name)
 
                 # AddedBySubhankar
                 # 💾 Append raw metadata for this image

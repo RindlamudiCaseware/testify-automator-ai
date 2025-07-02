@@ -1,777 +1,5 @@
 from pathlib import Path
 
-# SMART_AI_CODE=""" 
-# import json
-# import time
-# from sentence_transformers import SentenceTransformer, util
-# from playwright.sync_api import sync_playwright
-# from pathlib import Path
-
-# # ====== SMART AI SELF-HEALER CORE ======
-
-# class SmartAILocatorError(Exception):
-#     pass
-
-# class SmartAISelfHealing:
-#     def __init__(self, metadata):
-#         self.metadata = metadata
-#         self.model = SentenceTransformer("all-MiniLM-L6-v2")
-
-#     def find_element(self, unique_name, page):
-#         element = self._find_by_unique_name(unique_name)
-#         if element:
-#             print(f"[SmartAI] Found element by unique_name: {unique_name}")
-#             return self._try_all_locators(element, page)
-
-#         print(f"[SmartAI] Unique_name '{unique_name}' not found. ML self-healing in progress...")
-#         element = self._ml_self_heal(unique_name)
-#         if element:
-#             print(f"[SmartAI] Healed element found via ML matching: {element.get('unique_name')}")
-#             return self._try_all_locators(element, page)
-
-#         raise SmartAILocatorError(f"Element '{unique_name}' not found and cannot self-heal.")
-
-#     def _find_by_unique_name(self, unique_name):
-#         for element in self.metadata:
-#             if element.get("unique_name") == unique_name:
-#                 return element
-#         return None
-
-#     def _try_all_locators(self, element, page):
-#         try_methods = []
-
-#         # Placeholder
-#         if element.get("placeholder"):
-#             try_methods.append(lambda: page.get_by_placeholder(element["placeholder"]))
-
-#         # Label text
-#         if element.get("label_text"):
-#             try_methods.append(lambda: page.get_by_text(element["label_text"]))
-
-#         # Role
-#         if element.get("tag_name"):
-#             try_methods.append(lambda: page.get_by_role(role=element["tag_name"], name=element.get("label_text", None)))
-
-#         # Test ID
-#         data_attrs = element.get("data_attrs", {})
-#         for k, v in data_attrs.items():
-#             if "test" in k or "qa" in k:
-#                 try_methods.append(lambda: page.get_by_test_id(v))
-
-#         # Sample value
-#         if element.get("sample_value"):
-#             try_methods.append(lambda: page.get_by_display_value(element["sample_value"]))
-
-#         # Class-based
-#         if element.get("class_list"):
-#             sel = "." + ".".join(element["class_list"])
-#             try_methods.append(lambda: page.locator(sel))
-
-#         # Try all locators until one works
-#         for method in try_methods:
-#             try:
-#                 locator = method()
-#                 if locator.count():
-#                     print(f"[SmartAI] Found using: {method}")
-#                     return locator
-#             except Exception as e:
-#                 continue
-
-#         raise SmartAILocatorError(f"No valid locator method found for '{element.get('unique_name')}'")
-
-#     def _ml_self_heal(self, unique_name):
-#         query_embedding = self.model.encode(unique_name, convert_to_tensor=True, show_progress_bar=False)
-#         best_score = -1
-#         best_element = None
-#         for element in self.metadata:
-#             attr_str = self._element_to_string(element)
-#             attr_embedding = self.model.encode(attr_str, convert_to_tensor=True, show_progress_bar=False)
-#             score = util.cos_sim(query_embedding, attr_embedding).item()
-#             if score > best_score:
-#                 best_score = score
-#                 best_element = element
-
-#         print(f"[SmartAI] Best healed match score: {best_score}")
-#         return best_element if best_score > 0.3 else None
-
-#     def _element_to_string(self, element):
-#         fields = [
-#             element.get("unique_name", ""),
-#             element.get("label_text", ""),
-#             element.get("intent", ""),
-#             element.get("ocr_type", ""),
-#             element.get("element_type", ""),
-#             element.get("tag_name", ""),
-#             element.get("placeholder", ""),
-#             " ".join(element.get("class_list", [])) if element.get("class_list") else "",
-#             json.dumps(element.get("data_attrs", {})),
-#             element.get("sample_value", ""),
-#         ]
-#         return " ".join([str(f) for f in fields if f])
-
-# # ====== PAGE PATCH ======
-
-# def patch_page_with_smartai(page, metadata):
-#     ai_healer = SmartAISelfHealing(metadata)
-#     def smartAI(unique_name):
-#         return ai_healer.find_element(unique_name, page)
-#     page.smartAI = smartAI
-#     return page
-
-# # ====== SAMPLE METADATA + USAGE ======
-
-# sample_metadata = [
-#     {
-#         "unique_name": "saucedemo_login_username_username",
-#         "label_text": "Username",
-#         "intent": "fill_username",
-#         "ocr_type": "textbox",
-#         "element_type": "input",
-#         "tag_name": "input",
-#         "placeholder": "Username",
-#         "class_list": ["input_error", "form_input"],
-#         "data_attrs": {"data-test": "username"},
-#         "sample_value": "standard_user"
-#     },
-#     {
-#         "unique_name": "saucedemo_login_password_password",
-#         "label_text": "Password",
-#         "intent": "fill_password",
-#         "ocr_type": "textbox",
-#         "element_type": "input",
-#         "tag_name": "input",
-#         "placeholder": "Password",
-#         "class_list": ["input_error", "form_input"],
-#         "data_attrs": {"data-test": "password"},
-#         "sample_value": "secret_sauce"
-#     },
-#     {
-#         "unique_name": "saucedemo_login_login_login",
-#         "label_text": "Login",
-#         "intent": "click_login",
-#         "ocr_type": "button",
-#         "element_type": "button",
-#         "tag_name": "button",
-#         "class_list": ["btn", "btn_action"],
-#         "data_attrs": {"data-test": "login-button"}
-#     }
-# ]
-
-# if __name__ == "__main__":
-#     with sync_playwright() as p:
-#         browser = p.chromium.launch(headless=False)
-#         page = browser.new_page()
-#         page.goto("https://www.saucedemo.com/")
-
-#         # Get the path to THIS FILE's directory
-#         script_dir = Path(__file__).parent
-#         # Go up one to 'src', then into 'metadata'
-#         metadata_path = (script_dir.parent / "metadata" / "after_enrichment.json").resolve()
-
-#         print("Loading:", metadata_path)  # Debug, can remove
-
-#         with open(metadata_path, "r") as f:
-#             actual_metadata = json.load(f)
-        
-#         patch_page_with_smartai(page, actual_metadata)
-
-#         try:
-#             page.smartAI("saucedemo_login_username_username").fill("standard_user")
-#             print("username filled")
-#         except SmartAILocatorError as e:
-#             print(f"Username fill failed: {e}")
-
-#         try:
-#             page.smartAI("saucedemo_login_password_password").fill("secret_sauce")
-#             print("password filled")
-#         except SmartAILocatorError as e:
-#             print(f"Password fill failed: {e}")
-
-#         try:
-#             page.smartAI("saucedemo_login_login_login").click()
-#             print("login button clicked")
-#         except SmartAILocatorError as e:
-#             print(f"Login click failed: {e}")
-
-#         # Wait 5 seconds to observe
-#         time.sleep(15)
-#         browser.close()
-
-# """
-
-# SMART_AI_CODE = """ 
-# # import json
-# # import time
-# # from sentence_transformers import SentenceTransformer, util
-# # from playwright.sync_api import sync_playwright
-# # from pathlib import Path
-
-# # # ====== SMART AI SELF-HEALER CORE ======
-
-# # class SmartAILocatorError(Exception):
-# #     pass
-
-# # class SmartAISelfHealing:
-# #     def __init__(self, metadata):
-# #         self.metadata = metadata
-# #         self.model = SentenceTransformer("all-MiniLM-L6-v2")
-
-# #     def find_element(self, unique_name, page):
-# #         element = self._find_by_unique_name(unique_name)
-        
-# #         if element:
-# #             print(f"[SmartAI] Found element by unique_name: {unique_name}")
-# #             return self._try_all_locators(element, page)
-
-# #         print(f"[SmartAI] Unique_name '{unique_name}' not found. ML self-healing in progress...")
-# #         element = self._ml_self_heal(unique_name)
-# #         if element:
-# #             print(f"[SmartAI] Healed element found via ML matching: {element.get('unique_name')}")
-# #             return self._try_all_locators(element, page)
-
-# #         raise SmartAILocatorError(f"Element '{unique_name}' not found and cannot self-heal.")
-
-# #     def _find_by_unique_name(self, unique_name):
-# #         for element in self.metadata:
-# #             if element.get("unique_name") == unique_name:
-# #                 return element
-# #         return None
-
-# #     def _try_all_locators(self, element, page):
-# #         try_methods = []
-
-# #         # Placeholder
-# #         if element.get("placeholder"):
-# #             try_methods.append(lambda: page.get_by_placeholder(element["placeholder"]))
-
-# #         # Label text
-# #         if element.get("label_text"):
-# #             try_methods.append(lambda: page.get_by_text(element["label_text"]))
-
-# #         # Role
-# #         if element.get("tag_name"):
-# #             try_methods.append(lambda: page.get_by_role(role=element["tag_name"], name=element.get("label_text", None)))
-
-# #         # Test ID
-# #         data_attrs = element.get("data_attrs", {})
-# #         for k, v in data_attrs.items():
-# #             if "test" in k or "qa" in k:
-# #                 try_methods.append(lambda: page.get_by_test_id(v))
-
-# #         # Sample value
-# #         if element.get("sample_value"):
-# #             try_methods.append(lambda: page.get_by_display_value(element["sample_value"]))
-
-# #         # Class-based
-# #         if element.get("class_list"):
-# #             sel = "." + ".".join(element["class_list"])
-# #             try_methods.append(lambda: page.locator(sel))
-
-# #         # Try all locators until one works
-# #         for method in try_methods:
-# #             try:
-# #                 locator = method()
-# #                 if locator.count():
-# #                     print(f"[SmartAI] Found using: {method}")
-# #                     return locator
-# #             except Exception as e:
-# #                 continue
-
-# #         raise SmartAILocatorError(f"No valid locator method found for '{element.get('unique_name')}'")
-
-# #     def _ml_self_heal(self, unique_name):
-# #         query_embedding = self.model.encode(unique_name, convert_to_tensor=True, show_progress_bar=False)
-# #         best_score = -1
-# #         best_element = None
-# #         for element in self.metadata:
-# #             attr_str = self._element_to_string(element)
-# #             attr_embedding = self.model.encode(attr_str, convert_to_tensor=True, show_progress_bar=False)
-# #             score = util.cos_sim(query_embedding, attr_embedding).item()
-# #             if score > best_score:
-# #                 best_score = score
-# #                 best_element = element
-
-# #         print(f"[SmartAI] Best healed match score: {best_score}")
-# #         return best_element if best_score > 0.3 else None
-
-# #     def _element_to_string(self, element):
-# #         fields = [
-# #             element.get("unique_name", ""),
-# #             element.get("label_text", ""),
-# #             element.get("intent", ""),
-# #             element.get("ocr_type", ""),
-# #             element.get("element_type", ""),
-# #             element.get("tag_name", ""),
-# #             element.get("placeholder", ""),
-# #             " ".join(element.get("class_list", [])) if element.get("class_list") else "",
-# #             json.dumps(element.get("data_attrs", {})),
-# #             element.get("sample_value", ""),
-# #         ]
-# #         return " ".join([str(f) for f in fields if f])
-
-# # # ====== PAGE PATCH ======
-
-# # def patch_page_with_smartai(page, metadata):
-# #     ai_healer = SmartAISelfHealing(metadata)
-# #     def smartAI(unique_name):
-# #         return ai_healer.find_element(unique_name, page)
-# #     page.smartAI = smartAI
-# #     return page
-
-# # # ====== SAMPLE METADATA + USAGE ======
-
-# # if __name__ == "__main__":
-# #     with sync_playwright() as p:
-# #         browser = p.chromium.launch(headless=False)
-# #         page = browser.new_page()
-# #         page.goto("https://www.saucedemo.com/")
-
-# #         # Get the path to THIS FILE's directory
-# #         script_dir = Path(__file__).parent
-# #         # Go up one to 'src', then into 'metadata'
-# #         metadata_path = (script_dir.parent / "metadata" / "after_enrichment.json").resolve()
-
-# #         print("Loading:", metadata_path)  # Debug, can remove
-
-# #         with open(metadata_path, "r") as f:
-# #             actual_metadata = json.load(f)
-        
-# #         patch_page_with_smartai(page, actual_metadata)
-
-# #         try:  
-# #             assert page.smartAI('saucedemo_login_title_swag_labs_label').is_visible()
-# #         except Exception as e:
-# #             print('Exception in swag_labs_label', e)
-# #         time.sleep(2)
-
-# #         try:
-# #             assert page.smartAI('saucedemo_login_username_username_textbox').is_visible()
-# #             # page.smartAI("saucedemo_login_username_username").fill("standard_user")
-# #             locator = page.smartAI('saucedemo_login_username_username_textbox')
-# #             print('got locator')
-# #             time.sleep(1)
-# #             locator.fill('standard_user')
-# #             print("username filled")
-# #         except SmartAILocatorError as e:
-# #             print(f"Username fill failed: {e}")
-# #         time.sleep(2)
-
-# #         try:
-# #             # page.smartAI("saucedemo_login_password_password").fill("secret_sauce")
-# #             page.smartAI('saucedemo_login_password_password_textbox').fill('secret_sauce')
-# #             print("password filled")
-# #         except SmartAILocatorError as e:
-# #             print(f"Password fill failed: {e}")
-# #         time.sleep(2)
-
-# #         try:
-# #             # page.smartAI("saucedemo_login_login_login").click()
-# #             page.smartAI('saucedemo_login_submit_login_button').click()
-# #             print("login button clicked")
-# #         except SmartAILocatorError as e:
-# #             print(f"Login click failed: {e}")
-# #         time.sleep(2)
-
-# #         # Wait 5 seconds to observe
-# #         time.sleep(15)
-# #         browser.close()
-
-
-
-# # ===================================== NEW CODE ====================================================================
-
-# import json
-# import time
-# from sentence_transformers import SentenceTransformer, util
-# from playwright.sync_api import sync_playwright
-# from pathlib import Path
-
-# # ====== SMART AI SELF-HEALER CORE ======
-
-# class SmartAILocatorError(Exception):
-#     pass
-
-# class SmartAISelfHealing:
-#     def __init__(self, metadata):
-#         self.metadata = metadata
-#         self.model = SentenceTransformer("all-MiniLM-L6-v2")
-
-#     def find_element(self, unique_name, page):
-#         element = self._find_by_unique_name(unique_name)
-
-#         if element:
-#             locator = self._try_all_locators(element, page)
-#             if locator:
-#                 print(f"[SmartAI] Element '{unique_name}' found using standard locator methods.")
-#                 return locator
-#             print(f"[SmartAI] Standard methods failed for '{unique_name}'. ML self-healing in progress...")
-#         else:
-#             print(f"[SmartAI] Unique_name '{unique_name}' not found. ML self-healing in progress...")
-
-#         element_ml = self._ml_self_heal(unique_name)
-#         if element_ml:
-#             locator_ml = self._try_all_locators(element_ml, page)
-#             if locator_ml:
-#                 print(f"[SmartAI] Healed element found via ML matching: '{element_ml.get('unique_name')}'")
-#                 return locator_ml
-
-#         raise SmartAILocatorError(f"Element '{unique_name}' not found and cannot self-heal.")
-
-#     def _find_by_unique_name(self, unique_name):
-#         for element in self.metadata:
-#             if element.get("unique_name") == unique_name:
-#                 return element
-#         return None
-
-#     def _map_tag_to_role(self, tag):
-#         tag_role_map = {
-#             'button': 'button',
-#             'input': 'textbox',
-#             'select': 'combobox',
-#             'textarea': 'textbox',
-#             'checkbox': 'checkbox'
-#         }
-#         return tag_role_map.get(tag.lower(), None)
-
-#     def _try_all_locators(self, element, page):
-#         try_methods = []
-
-#         if element.get("placeholder"):
-#             try_methods.append(lambda: page.get_by_placeholder(element["placeholder"]))
-
-#         if element.get("label_text"):
-#             try_methods.append(lambda: page.get_by_label(element["label_text"]))
-#             try_methods.append(lambda: page.get_by_text(element["label_text"], exact=True))
-
-#         if element.get("tag_name"):
-#             role = self._map_tag_to_role(element["tag_name"])
-#             if role:
-#                 try_methods.append(lambda: page.get_by_role(role, name=element.get("label_text", None)))
-
-#         data_attrs = element.get("data_attrs", {})
-#         for k, v in data_attrs.items():
-#             if "test" in k.lower() or "qa" in k.lower():
-#                 try_methods.append(lambda: page.get_by_test_id(v))
-
-#         if element.get("sample_value"):
-#             try_methods.append(lambda: page.get_by_display_value(element["sample_value"]))
-
-#         if element.get("locator") and element["locator"].get("type") == "css":
-#             try_methods.append(lambda: page.locator(element["locator"]["value"]))
-
-#         if element.get("class_list"):
-#             sel = "." + ".".join(element["class_list"])
-#             try_methods.append(lambda: page.locator(sel))
-
-#         for method in try_methods:
-#             try:
-#                 locator = method()
-#                 if locator.count() > 0:
-#                     return locator
-#             except Exception:
-#                 continue
-
-#         return None
-
-#     def _ml_self_heal(self, unique_name):
-#         query_embedding = self.model.encode(unique_name, convert_to_tensor=True, show_progress_bar=False)
-#         best_score = -1
-#         best_element = None
-#         for element in self.metadata:
-#             attr_str = self._element_to_string(element)
-#             attr_embedding = self.model.encode(attr_str, convert_to_tensor=True, show_progress_bar=False)
-#             score = util.cos_sim(query_embedding, attr_embedding).item()
-#             if score > best_score:
-#                 best_score = score
-#                 best_element = element
-
-#         print(f"[SmartAI] Best healed match score: {best_score}")
-#         return best_element if best_score > 0.3 else None
-
-#     def _element_to_string(self, element):
-#         fields = [
-#             element.get("unique_name", ""),
-#             element.get("label_text", ""),
-#             element.get("intent", ""),
-#             element.get("ocr_type", ""),
-#             element.get("element_type", ""),
-#             element.get("tag_name", ""),
-#             element.get("placeholder", ""),
-#             " ".join(element.get("class_list", [])) if element.get("class_list") else "",
-#             json.dumps(element.get("data_attrs", {})),
-#             element.get("sample_value", ""),
-#         ]
-#         return " ".join([str(f) for f in fields if f])
-
-# # ====== PAGE PATCH ======
-
-# def patch_page_with_smartai(page, metadata):
-#     ai_healer = SmartAISelfHealing(metadata)
-#     def smartAI(unique_name):
-#         return ai_healer.find_element(unique_name, page)
-#     page.smartAI = smartAI
-#     return page
-
-# # ====== SAMPLE METADATA + USAGE ======
-
-# if __name__ == "__main__":
-#     with sync_playwright() as p:
-#         browser = p.chromium.launch(headless=False)
-#         page = browser.new_page()
-#         page.goto("https://www.saucedemo.com/")
-
-#         script_dir = Path(__file__).parent
-#         metadata_path = (script_dir.parent / "metadata" / "after_enrichment.json").resolve()
-
-#         with open(metadata_path, "r") as f:
-#             actual_metadata = json.load(f)
-
-#         patch_page_with_smartai(page, actual_metadata)
-
-#         try:
-#             page.smartAI('saucedemo_login_title_swag_labs_label').wait_for(state='visible', timeout=5000)
-#             print("Swag Labs title verified.")
-#         except Exception as e:
-#             print(f"Title verification error: {e}")
-
-#         try:
-#             username_field = page.smartAI('saucedemo_login_username_username_textbox')
-#             username_field.wait_for(state='editable', timeout=5000)
-#             username_field.fill("standard_user")
-#             print("Username filled successfully.")
-#         except Exception as e:
-#             print(f"Username fill error: {e}")
-
-#         try:
-#             password_field = page.smartAI('saucedemo_login_password_password_textbox')
-#             password_field.wait_for(state='editable', timeout=5000)
-#             password_field.fill("secret_sauce")
-#             print("Password filled successfully.")
-#         except Exception as e:
-#             print(f"Password fill error: {e}")
-
-#         try:
-#             login_btn = page.smartAI('saucedemo_login_submit_login_button')
-#             login_btn.wait_for(state='visible', timeout=5000)
-#             login_btn.click()
-#             print("Login button clicked.")
-#         except Exception as e:
-#             print(f"Login click error: {e}")
-
-#         time.sleep(5)
-#         browser.close()
-
-
-
-
-
-
-
-
-
-
-# # ===================================== NEW CODE ====================================================================
-
-# # import json
-# # import time
-# # from sentence_transformers import SentenceTransformer, util
-# # from playwright.sync_api import sync_playwright
-# # from pathlib import Path
-
-# # class SmartAILocatorError(Exception):
-# #     pass
-
-# # class SmartAISelfHealing:
-# #     def __init__(self, metadata):
-# #         self.metadata = metadata
-# #         self.model = SentenceTransformer("all-MiniLM-L6-v2")
-
-# #     def find_element(self, unique_name, page):
-# #         element = self._find_by_unique_name(unique_name)
-# #         if not element:
-# #             raise SmartAILocatorError(f"Element metadata for '{unique_name}' not found.")
-
-# #         locator = self._try_all_locators(element, page)
-# #         if locator:
-# #             print(f"[SmartAI] Element '{unique_name}' found using standard locator methods.")
-# #             return locator
-
-# #         # Fallback to ML self-healing if playwright methods fail
-# #         print(f"[SmartAI] Standard methods failed for '{unique_name}'. ML self-healing in progress...")
-# #         element_ml = self._ml_self_heal(unique_name)
-
-# #         if element_ml:
-# #             locator_ml = self._try_all_locators(element_ml, page)
-# #             if locator_ml:
-# #                 print(f"[SmartAI] Healed element found via ML matching: '{element_ml.get('unique_name')}'")
-# #                 return locator_ml
-
-# #         raise SmartAILocatorError(f"Element '{unique_name}' not found and cannot self-heal.")
-
-# #     def _find_by_unique_name(self, unique_name):
-# #         for element in self.metadata:
-# #             if element.get("unique_name") == unique_name:
-# #                 return element
-# #         return None
-
-# #     def _try_all_locators(self, element, page):
-# #         try_methods = []
-
-# #         # First priority: placeholder
-# #         if element.get("placeholder"):
-# #             try_methods.append(lambda: page.get_by_placeholder(element["placeholder"]))
-
-# #         # Second priority: Label (explicit)
-# #         if element.get("label_text"):
-# #             try_methods.append(lambda: page.get_by_label(element["label_text"]))
-# #             try_methods.append(lambda: page.get_by_text(element["label_text"], exact=True))
-
-# #         # Role-based locator with valid role mapping
-# #         role = self._tag_to_role(element.get("tag_name"))
-# #         if role:
-# #             try_methods.append(lambda: page.get_by_role(role, name=element.get("label_text", None)))
-
-# #         # Test ID locator
-# #         for k, v in element.get("data_attrs", {}).items():
-# #             if "test" in k.lower() or "qa" in k.lower():
-# #                 try_methods.append(lambda: page.get_by_test_id(v))
-
-# #         # Display value
-# #         if element.get("sample_value"):
-# #             try_methods.append(lambda: page.get_by_display_value(element["sample_value"]))
-
-# #         # CSS selector from metadata
-# #         if element.get("locator") and element["locator"]["type"] == "css":
-# #             try_methods.append(lambda: page.locator(element["locator"]["value"]))
-
-# #         # Class-based selector
-# #         if element.get("class_list"):
-# #             css_sel = "." + ".".join(element["class_list"])
-# #             try_methods.append(lambda: page.locator(css_sel))
-
-# #         # Execute and validate locator explicitly for editability
-# #         for method in try_methods:
-# #             try:
-# #                 locator = method()
-# #                 if locator.count() and locator.first.is_editable():
-# #                     print(f"[SmartAI] Editable locator found: {method}")
-# #                     return locator.first
-# #                 elif locator.count() and locator.first.is_visible():
-# #                     print(f"[SmartAI] Visible locator found (non-editable): {method}")
-# #                     return locator.first
-# #             except Exception:
-# #                 continue
-
-# #         return None
-
-# #     def _tag_to_role(self, tag_name):
-# #         tag_role_map = {
-# #             'button': 'button',
-# #             'input': 'textbox',
-# #             'select': 'combobox',
-# #             'textarea': 'textbox',
-# #             'checkbox': 'checkbox'
-# #             # Add more mappings as necessary
-# #         }
-# #         return tag_role_map.get(tag_name.lower(), None)
-
-# #     def _ml_self_heal(self, unique_name):
-# #         query_embedding = self.model.encode(unique_name, convert_to_tensor=True, show_progress_bar=False)
-# #         best_score = -1
-# #         best_element = None
-
-# #         for element in self.metadata:
-# #             attr_str = self._element_to_string(element)
-# #             attr_embedding = self.model.encode(attr_str, convert_to_tensor=True, show_progress_bar=False)
-# #             score = util.cos_sim(query_embedding, attr_embedding).item()
-# #             if score > best_score:
-# #                 best_score = score
-# #                 best_element = element
-
-# #         print(f"[SmartAI] Best healed match score: {best_score}")
-# #         return best_element if best_score > 0.3 else None
-
-# #     def _element_to_string(self, element):
-# #         attrs = [
-# #             element.get("label_text", ""),
-# #             element.get("placeholder", ""),
-# #             element.get("tag_name", ""),
-# #             " ".join(element.get("class_list", [])),
-# #             element.get("locator", {}).get("value", ""),
-# #             element.get("sample_value", "")
-# #         ]
-# #         return " ".join(attrs)
-
-
-
-
-# # def patch_page_with_smartai(page, metadata):
-# #     ai_healer = SmartAISelfHealing(metadata)
-# #     page.smartAI = lambda unique_name: ai_healer.find_element(unique_name, page)
-# #     return page
-
-# # # === SAMPLE USAGE WITH REAL METADATA ===
-
-# # if __name__ == "__main__":
-# #     with sync_playwright() as p:
-# #         browser = p.chromium.launch(headless=False)
-# #         page = browser.new_page()
-# #         page.goto("https://www.saucedemo.com/")
-
-# #         script_dir = Path(__file__).parent
-# #         metadata_path = (script_dir.parent / "metadata" / "after_enrichment.json").resolve()
-# #         print(f"Loading metadata from: {metadata_path}")
-
-# #         with open(metadata_path, "r") as f:
-# #             actual_metadata = json.load(f)
-
-# #         patch_page_with_smartai(page, actual_metadata)
-
-# #         try:
-# #             page.smartAI('saucedemo_login_title_swag_labs_label').wait_for(state='visible', timeout=5000)
-# #             print("Swag Labs title verified.")
-# #         except Exception as e:
-# #             print(f"Title verification error: {e}")
-
-# #         try:
-# #             # username_field = page.smartAI('saucedemo_login_username_username_textbox')
-
-# #             username_field = page.smartAI('saucedemo_login_username_username_textbox')
-# #             if username_field and username_field.is_editable():
-# #                 username_field.fill("standard_user")
-# #             else:
-# #                 raise SmartAILocatorError("Found element isn't editable.")
-
-# #             # username_field.wait_for(state='editable', timeout=5000)
-# #             # username_field.fill("standard_user")
-# #             print("Username filled successfully.")
-# #         except Exception as e:
-# #             print(f"Username fill error: {e}")
-
-# #         try:
-# #             password_field = page.smartAI('saucedemo_login_password_password_textbox')
-# #             password_field.wait_for(state='editable', timeout=5000)
-# #             password_field.fill("secret_sauce")
-# #             print("Password filled successfully.")
-# #         except Exception as e:
-# #             print(f"Password fill error: {e}")
-
-# #         try:
-# #             login_btn = page.smartAI('saucedemo_login_submit_login_button')
-# #             login_btn.wait_for(state='visible', timeout=5000)
-# #             login_btn.click()
-# #             print("Login button clicked.")
-# #         except Exception as e:
-# #             print(f"Login click error: {e}")
-
-# #         time.sleep(5)
-# #         browser.close()
-
-
-
-
-# """
-
 SMART_AI_CODE = """
 import json
 import time
@@ -790,16 +18,15 @@ class SmartAISelfHealing:
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
 
     def find_element(self, unique_name, page):
-        element = self._find_by_unique_name(unique_name)
-
-        if element:
-            locator = self._try_all_locators(element, page)
-            if locator:
-                print(f"[SmartAI] Element '{unique_name}' found using standard locator methods.")
-                return locator
-            print(f"[SmartAI] Standard methods failed for '{unique_name}'. ML self-healing in progress...")
-        else:
-            print(f"[SmartAI] Unique_name '{unique_name}' not found. ML self-healing in progress...")
+        # element = self._find_by_unique_name(unique_name)
+        # if element:
+        #     locator = self._try_all_locators(element, page)
+        #     if locator:
+        #         print(f"[SmartAI] Element '{unique_name}' found using standard locator methods.")
+        #         return locator
+        #     print(f"[SmartAI] Standard methods failed for '{unique_name}'. ML self-healing in progress...")
+        # else:
+            # print(f"[SmartAI] Unique_name '{unique_name}' not found. ML self-healing in progress...")
 
         element_ml = self._ml_self_heal(unique_name)
         if element_ml:
@@ -826,7 +53,19 @@ class SmartAISelfHealing:
         }
         return tag_role_map.get(tag.lower(), None)
 
+    # Our working order:
     def _try_all_locators(self, element, page):
+        '''Order Is:
+                # 1. Placeholder
+                # 2. Label (label, then text)
+                # 3. Role + label
+                # 4. Test ID (data-qa, data-test)
+                # 5. Display value (sample_value)
+                # 6. CSS selector (custom locator)
+                # 7. ID (exact, then partial)
+                # 8. Class (exact, then partial)
+                # 9. Class list
+        '''
         try_methods = []
 
         if element.get("placeholder"):
@@ -852,18 +91,144 @@ class SmartAISelfHealing:
         if element.get("locator") and element["locator"].get("type") == "css":
             try_methods.append(lambda: page.locator(element["locator"]["value"]))
 
+        # ✅ NEW: Try by id (string), before dom_class
+        if element.get("dom_id"):
+            id_value = element["dom_id"]
+            # Exact match
+            try_methods.append(lambda: page.locator(f'#{id_value}'))
+            # Partial match (robustness)
+            try_methods.append(lambda: page.locator(f'[id*="{id_value}"]'))
+
+
+        # ✅ NEW: Try by class (string)
+        if element.get("dom_class"):
+            # Exact class match (e.g., class="shopping_cart_link")
+            class_value = element["dom_class"]
+            class_sel = "." + ".".join(class_value.split())
+            try_methods.append(lambda: page.locator(class_sel))
+            # Optional: partial match for robustness
+            try_methods.append(lambda: page.locator(f'[class*="{class_value}"]'))
+
+        # Existing: class_list (list of classes)
         if element.get("class_list"):
             sel = "." + ".".join(element["class_list"])
             try_methods.append(lambda: page.locator(sel))
-
+            
         for method in try_methods:
             try:
                 locator = method()
                 if locator.count() > 0:
-                    return locator
+                    return locator.first
             except Exception:
                 continue
 
+        return None
+
+    # Standard order:
+    def _try_all_locators(self, element, page):
+        '''
+            # 1. Test ID
+            # 2. Role + Name
+            # 3. Label Text
+            # 4. Placeholder
+            # 5. Text Content (exact)
+            # 6. Display Value
+            # 7. ID (exact)
+            # 8. ID (partial)
+            # 9. Class (exact)
+            # 10. Class (partial)
+            # 11. CSS Selector (custom/fallback)
+        '''
+        try_methods = []
+        descriptions = []
+
+        # 1. data-testid/data-test/data-qa
+        data_attrs = element.get("data_attrs", {})
+        for k, v in data_attrs.items():
+            if "test" in k.lower() or "qa" in k.lower():
+                print(f"[SmartAI][Add] get_by_test_id({v}) for attribute {k}")
+                try_methods.append(lambda: page.get_by_test_id(v))
+                descriptions.append(f"get_by_test_id({v}) for attribute {k}")
+
+        # 2. role + label
+        if element.get("tag_name"):
+            role = self._map_tag_to_role(element["tag_name"])
+            if role and element.get("label_text"):
+                print(f"[SmartAI][Add] get_by_role({role}, name={element['label_text']})")
+                try_methods.append(lambda: page.get_by_role(role, name=element["label_text"]))
+                descriptions.append(f"get_by_role({role}, name={element['label_text']})")
+
+        # 3. label text
+        if element.get("label_text"):
+            print(f"[SmartAI][Add] get_by_label({element['label_text']})")
+            try_methods.append(lambda: page.get_by_label(element["label_text"]))
+            descriptions.append(f"get_by_label({element['label_text']})")
+
+        # 4. placeholder
+        if element.get("placeholder"):
+            print(f"[SmartAI][Add] get_by_placeholder({element['placeholder']})")
+            try_methods.append(lambda: page.get_by_placeholder(element["placeholder"]))
+            descriptions.append(f"get_by_placeholder({element['placeholder']})")
+
+        # 5. text content (exact)
+        if element.get("label_text"):
+            print(f"[SmartAI][Add] get_by_text({element['label_text']}, exact=True)")
+            try_methods.append(lambda: page.get_by_text(element["label_text"], exact=True))
+            descriptions.append(f"get_by_text({element['label_text']}, exact=True)")
+
+        # 6. display value
+        if element.get("sample_value"):
+            print(f"[SmartAI][Add] get_by_display_value({element['sample_value']})")
+            try_methods.append(lambda: page.get_by_display_value(element["sample_value"]))
+            descriptions.append(f"get_by_display_value({element['sample_value']})")
+
+        # 7. id (exact)
+        if element.get("dom_id"):
+            id_value = element["dom_id"]
+            print(f"[SmartAI][Add] locator(#{id_value}) [ID exact]")
+            try_methods.append(lambda: page.locator(f'#{id_value}'))
+            descriptions.append(f"locator(#{id_value}) [ID exact]")
+            # 8. id (partial)
+            print(f'[SmartAI][Add] locator([id*="{id_value}"]) [ID partial]')
+            try_methods.append(lambda: page.locator(f'[id*="{id_value}"]'))
+            descriptions.append(f'locator([id*="{id_value}"]) [ID partial]')
+
+        # 9. class (exact)
+        if element.get("dom_class"):
+            class_value = element["dom_class"]
+            class_sel = "." + ".".join(class_value.split())
+            print(f"[SmartAI][Add] locator({class_sel}) [class exact]")
+            try_methods.append(lambda: page.locator(class_sel))
+            descriptions.append(f"locator({class_sel}) [class exact]")
+            # 10. class (partial)
+            print(f'[SmartAI][Add] locator([class*="{class_value}"]) [class partial]')
+            try_methods.append(lambda: page.locator(f'[class*="{class_value}"]'))
+            descriptions.append(f'locator([class*="{class_value}"]) [class partial]')
+
+        # 11. class list (composite)
+        if element.get("class_list"):
+            sel = "." + ".".join(element["class_list"])
+            print(f"[SmartAI][Add] locator({sel}) [class_list]")
+            try_methods.append(lambda: page.locator(sel))
+            descriptions.append(f"locator({sel}) [class_list]")
+
+        # 12. custom css selector (if provided)
+        if element.get("locator") and element["locator"].get("type") == "css":
+            print(f"[SmartAI][Add] locator({element['locator']['value']}) [custom css]")
+            try_methods.append(lambda: page.locator(element["locator"]["value"]))
+            descriptions.append(f"locator({element['locator']['value']}) [custom css]")
+
+        for idx, method in enumerate(try_methods):
+            try:
+                locator = method()
+                if locator.count() > 0:
+                    print(f"[SmartAI][Return] {descriptions[idx]} succeeded and returned a locator.")
+                    return locator.first
+            except Exception as e:
+                print(f"[SmartAI][Skip] {descriptions[idx]} failed due to: {e}")
+                continue
+
+        print("[SmartAI][Return] No locator found for element.")
         return None
 
     def _ml_self_heal(self, unique_name):
@@ -921,40 +286,137 @@ if __name__ == "__main__":
 
         patch_page_with_smartai(page, actual_metadata)
 
+        # ------------------------------- login
+        # try:
+        #     page.smartAI('saucedemo_login_title_swag_labs_label').is_visible()
+        #     print("saucedemo_login_title_swag_labs_label is visible ")
+        # except Exception as e:
+        #     print(f"saucedemo_login_title_swag_labs_label error: {e}")
+        # time.sleep(1)
+        
         try:
-            page.smartAI('saucedemo_login_title_swag_labs_label').wait_for(state='visible', timeout=5000)
-            print("Swag Labs title verified.")
+            page.smartAI('saucedemo_login_username_username_textbox').fill('standard_user')
+            print("Username filled successfully. ")
         except Exception as e:
-            print(f"Title verification error: {e}")
+            print(f"Username fill error: {e}", "")
+        # time.sleep(1)
 
         try:
-            username_field = page.smartAI('saucedemo_login_username_username_textbox')
-            username_field.wait_for(state='editable', timeout=5000)
-            username_field.fill("standard_user")
-            print("Username filled successfully.")
+            page.smartAI('saucedemo_login_password_password_textbox').fill('secret_sauce')
+            print("Password filled successfully. ")
         except Exception as e:
-            print(f"Username fill error: {e}")
+            print(f"Password fill error: {e}", "")
+        # time.sleep(1)
 
         try:
-            password_field = page.smartAI('saucedemo_login_password_password_textbox')
-            password_field.wait_for(state='editable', timeout=5000)
-            password_field.fill("secret_sauce")
-            print("Password filled successfully.")
+            page.smartAI('saucedemo_login_login_login_button').click()
+            print("Login button clicked. ")
         except Exception as e:
-            print(f"Password fill error: {e}")
+            print(f"Login click error: {e}", "")
+        # time.sleep(1)
+        # ----------------------------- inventory
+        try:
+            assert page.smartAI('saucedemo_inventory_product_list_products_label').is_visible()
+            print("Product verified. ")
+        except Exception as e:
+            print("Product verified error.", e, "")
+        # time.sleep(1)
+        
+        try:            
+            assert page.smartAI('saucedemo_inventory_product_name_sauce_labs_backpack_label').is_visible()
+            print("SauceLab Backpack verified. ")
+        except Exception as e:
+            print("SauceLab Backpack verified error.", e, "")
+        # time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_inventory_add_to_cart_add_to_cart_button').click()
+            print("Add-To-Cart is clicked. ")
+        except Exception as e:
+            print("Add-To-Cart is clicked error.", e, "")
+        # time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_inventory_go_to_cart_shopping_cart_link_button').click()
+            print("Shopping Cart is clicked. ")
+        except Exception as e:
+            print("Shopping Cart is clicked error.", e, "")
+        # time.sleep(1)
+        # ----------------------------- cart             
+        try:
+            assert page.smartAI('saucedemo_cart_header_your_cart_label').is_visible()
+            print("Your Cart Label verified. ")
+        except Exception as e:
+            print("Your Cart Label verified error.", e, "")
+        # time.sleep(1)
 
         try:
-            login_btn = page.smartAI('saucedemo_login_submit_login_button')
-            login_btn.wait_for(state='visible', timeout=5000)
-            login_btn.click()
-            print("Login button clicked.")
+            page.smartAI('saucedemo_cart_proceed_checkout_checkout_button').click()
+            print("Checkout clicked. ")
         except Exception as e:
-            print(f"Login click error: {e}")
+            print("Checkout clicked error.", e, "")
+        # time.sleep(1)
+        
+        # ----------------------------- checkout-info
+        try:
+            assert page.smartAI('saucedemo_checkout_info_instructions_checkout:_your_information_label').is_visible()
+            print("Checkout Info verified. ")
+        except Exception as e:
+            print("Checkout Info verified error.", e, "")
+        # time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_info_first_name_first_name_textbox').fill('John')
+            print("First name filled. ")
+        except Exception as e:
+            print("First name filled error.", e, "")
+        # time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_info_last_name_last_name_textbox').fill('Doe')
+            print("Last name filled. ")
+        except Exception as e:
+            print("Last name filled error.", e, "")
+        # time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_info_zip_code_zip/postal_code_textbox').fill('123456')
+            print("zip code filled. ")
+        except Exception as e:
+            print("zip code filled error.", e, "")
+        # time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_info_continue_continue_button').click()
+            print("Continue button clicked. ")
+        except Exception as e:
+            print("Continue button not clicked.", e, "")
+        # time.sleep(1)
+        
+        # ------------------------------- checkout-overview
+        try:
+            assert page.smartAI('saucedemo_checkout_overview_page_title_checkout:_overview_label').is_visible()
+            print("Checkout Overview verified. ")
+        except Exception as e:
+            print("Checkout Overview verified error.", e, "")
+        # time.sleep(1)
+        
+        try:
+            page.smartAI('saucedemo_checkout_overview_finish_finish_button').click()
+            print("Finish button clicked.")
+        except Exception as e:
+            print("Finish button not clicked.", e, "")
+        # time.sleep(1)
+        
+
+
 
         time.sleep(5)
         browser.close()
 
 """
+
+
 
 def ensure_smart_ai_module():
     lib_path = Path("generated_runs/src/lib")

@@ -12,7 +12,8 @@ def save_region(image: Image.Image, x: int, y: int, w: int, h: int, output_dir: 
         try:
             x, y, w, h = detect_ui_elements_yolo(image_path, (x, y, w, h))
         except Exception as e:
-            print(f"[YOLO FALLBACK] Using default bbox due to: {e}")
+            # print(f"[YOLO FALLBACK] Using default bbox due to: {e}")
+            pass
 
     # ✅ Clamp bounding box to image dimensions
     x = max(0, min(x, image.width - 1))
@@ -52,6 +53,7 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         except Exception as e:
             print(f"[WARN] classify_ocr_type failed for '{image_path}': {e}")
     ocr_type = ocr_type if ocr_type else "label"
+
     unique_name = generate_unique_name(page_name,intent,label_text, ocr_type)
 
     return sanitize_metadata({
@@ -85,12 +87,24 @@ def build_standard_metadata(element: dict, page_name: str, image_path: str = "",
         "dom_matched": element.get("dom_matched", False),
         "ocr_type": ocr_type,
         "unique_name":unique_name,
-        "placeholder": element.get("placeholder", "")   # ✅ ADDED LINE by Subhankar
+        "placeholder": element.get("placeholder", ""),   # ✅ ADDED LINE by Subhankar
+        "external": False,   # ✅ ADDED LINE by Subhankar
     })
 
+# def generate_unique_name(page_name: str, intent: str, label_text: str, ocr_type: str) -> str:
+#     label = label_text.lower().strip().replace(" ", "_")
+#     return f"{page_name}_{intent}_{label}_{ocr_type}"
+
 def generate_unique_name(page_name: str, intent: str, label_text: str, ocr_type: str) -> str:
-    label = label_text.lower().strip().replace(" ", "_")
+    # Remove quotes from label_text
+    cleaned_label = (label_text or "").replace("'", "").replace('"', "")
+    # Truncate to 50 chars
+    cleaned_label = cleaned_label[:50]
+    # Lowercase and replace spaces with underscores
+    label = cleaned_label.lower().strip().replace(" ", "_")
     return f"{page_name}_{intent}_{label}_{ocr_type}"
+
+
 
 def sanitize_metadata(metadata: dict) -> dict:
     def safe_convert(value):

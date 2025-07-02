@@ -8,16 +8,11 @@ from playwright.async_api import async_playwright, Page, Browser
 import json
 import os
 from pathlib import Path
-
 import pprint
 
-
-
 router = APIRouter()
-
 client = PersistentClient(path="./data/chroma_db")
 collection = client.get_or_create_collection(name="element_metadata")
-
 
 BROWSER: Browser = None
 PAGE: Page = None
@@ -26,10 +21,8 @@ CURRENT_PAGE_NAME: str = "unknown_page"
 
 class LaunchRequest(BaseModel):
     url: str
-
 class CaptureRequest(BaseModel):
     pass
-
 class PageNameSetRequest(BaseModel):
     page_name: str
 
@@ -39,14 +32,16 @@ async def send_enrichment_requests(page_name: str):
         try:
             await client.post("http://localhost:8001/set-current-page-name", json={"page_name": page_name})
         except Exception as e:
-            # print(f"🔥Error from: await client.post('http://localhost:8001/set-current-page-name': {e}")
+            print(f"🔥Error from: await client.post('8001/set-current-page-name': {e}")
             return {"status": "fail", "error": "set-current-page-name failed"}
+        print('[DEBUG] set global CURRENT_PAGE_NAME = ', CURRENT_PAGE_NAME, ' Going for capture_dom_from_client')
 
         try:
             resp = await client.post("http://localhost:8001/capture-dom-from-client", json={})
         except Exception as e:
-            # print("🔥🔥Error from: await client.post('http://localhost:8001/capture-dom-from', {e}")
+            print("🔥🔥Error from: await client.post('8001/capture-from-dom-client'", e)
             return {"status": "fail", "error": "capture-dom-from-client failed"}
+        print('[DEBUG] capture_dom_from_client done. resp = ', resp, "Now trying to convert the data to json", sep='\n')
 
         json_data = None
         try:
@@ -55,16 +50,15 @@ async def send_enrichment_requests(page_name: str):
             if not decoded_json_data or decoded_json_data in ["null", "undefined"]:
                 return {"status": "fail", "error": "Empty or invalid response"}
         except Exception as e:
-            # print(f"🔥🔥🔥Error from: await resp.aread(): {e}")
+            print(f"🔥🔥🔥Error from: await resp.aread(): {e}")
             return {"status": "fail", "error": f"Error reading response: {e}"}
         
-        # print("[DEBUG] Response Raw JSON:", decoded_json_data)
+        # print("[DEBUG] decoded_json_data:", decoded_json_data)
         try:
             return json.loads(decoded_json_data)
         except Exception as e:
-            # print("🔥🔥🔥🔥[ERROR] JSON parsing failed:", e)
+            print("🔥🔥🔥🔥[ERROR] JSON parsing failed:", e)
             return {"status": "fail", "error": "Response parsing failed : {e}"}
-
 
 @router.post("/launch-browser")
 async def launch_browser(req: LaunchRequest):
@@ -133,7 +127,7 @@ async def launch_browser(req: LaunchRequest):
                 try {
                     
                     const resultStr = await window.sendEnrichmentRequests(pageName);
-                    const result = JSON.parse(resultStr);
+                    const result = JSON.parse(resultStr);    
                     console.log("✅ Matched:", result);
 
                     if (result.count === 0) {
@@ -149,9 +143,9 @@ async def launch_browser(req: LaunchRequest):
                     messageBox.style.color = "red";
                 }
             };
-
+                                            
             document.addEventListener('keydown', function(e) {
-                if (e.altKey && e.key === 'e') {
+                if (e.altKey && e.key === 'q') {
                     const modal = document.getElementById('ocrModal');
                     modal.style.display = 'block';
                     loadAvailablePages();
@@ -173,7 +167,8 @@ async def launch_browser(req: LaunchRequest):
 async def set_page_name(req: PageNameSetRequest):
     global CURRENT_PAGE_NAME
     CURRENT_PAGE_NAME = normalize_page_name(req.page_name)
-    return {"message": f"✅ Page name set to: {CURRENT_PAGE_NAME}"}
+    print(f'"message": f"✅ Page name set to: {CURRENT_PAGE_NAME}"')
+    return
 
 @router.post("/capture-dom-from-client")
 async def capture_from_keyboard(_: CaptureRequest):
@@ -185,26 +180,17 @@ async def capture_from_keyboard(_: CaptureRequest):
             raise HTTPException(status_code=500, detail="❌ Cannot extract. Page is already closed.")
 
         dom_data = await extract_dom_metadata(PAGE, page_name)
+
         print("[DEBUG] DOM elements extracted:", len(dom_data))
+
         ocr_data = collection.get(where={"page_name": page_name})["metadatas"]
         
         # Create folder for debug metadata dump added by subhankar
         debug_metadata_dir = Path("generated_runs") / "src" / "ocr-dom-metadata"
-        debug_metadata_dir.mkdir(parents=True, exist_ok=True)
-      
-        # # Dump DOM data added by subhankar
-        # with open(debug_metadata_dir / f"dom_data_{page_name}.json", "w", encoding="utf-8") as f:
-        #     json.dump(dom_data, f, indent=2, ensure_ascii=False)
-
-        # # Dump OCR data added by subhankar
-        # with open(debug_metadata_dir / f"ocr_data_{page_name}.json", "w", encoding="utf-8") as f:
-        #     json.dump(ocr_data, f, indent=2, ensure_ascii=False)
-
-        
+        debug_metadata_dir.mkdir(parents=True, exist_ok=True)                 
         # Write DOM data as raw text added by subhankar
         with open(debug_metadata_dir / f"dom_data_{page_name}.txt", "w", encoding="utf-8") as f:
             f.write(pprint.pformat(dom_data))
-
         # Write OCR data as raw text added by subhankar
         with open(debug_metadata_dir / f"ocr_data_{page_name}.txt", "w", encoding="utf-8") as f:
             f.write(pprint.pformat(ocr_data))

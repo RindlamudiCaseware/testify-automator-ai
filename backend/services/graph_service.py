@@ -23,7 +23,7 @@ def build_dependency_graph(ordered_images: List[str], output_path: str = "./data
         with open(output_path, "w") as f:
             json.dump(edges, f, indent=2)
         logger.debug(f"[GRAPH] ✅ Dependency graph written to: {os.path.abspath(output_path)}")
-        logger.debug(f"[GRAPH] Contents:\n{json.dumps(edges, indent=2)}")
+        # logger.debug(f"[GRAPH] Contents:\n{json.dumps(edges, indent=2)}")
     except Exception as e:
         logger.error(f"[GRAPH] ❌ Failed to write dependency graph: {e}")
 
