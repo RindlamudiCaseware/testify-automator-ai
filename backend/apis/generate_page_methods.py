@@ -309,7 +309,11 @@ def smartai_page(page):
         response = send_message("python", "generate_page_file", {"entries": entries, "page_name": page})
         payload = response.payload   # This is a dict: {"filename": ..., "code": ...}
 
-        outdir = Path("generated_runs") / "src" / "pages"
+        # outdir = Path("generated_runs") / "src" / "pages"
+        from utils.project_paths import get_pages_dir
+        outdir = get_pages_dir(project_name, script_generator, language)
+        outdir.mkdir(parents=True, exist_ok=True)
+
         outdir.mkdir(parents=True, exist_ok=True)
         filename = outdir / payload["filename"]
         with open(filename, "w", encoding="utf-8") as f:

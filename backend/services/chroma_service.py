@@ -25,7 +25,7 @@ def _sanitize_metadata_value(value):
         return json.dumps(value)
     return value
 
-def upsert_text_record(record: dict):
+def upsert_text_record(record: dict, project_name: str, framework: str, language: str):
     # print(f"[DEBUG] Upserting OCR record: {record}")
     bbox_values = record.get('bbox') or [0, 0, 0, 0]
     bbox_str = ",".join(map(str, bbox_values))
@@ -59,6 +59,11 @@ def upsert_text_record(record: dict):
         "region_image_path": _sanitize_metadata_value(record.get("region_image_path")),
         "locator": _sanitize_metadata_value(record.get("locator")),
         "ocr_type": classify_ocr_type(record.get("region_image_path", "")),
+        "type": "ocr",
+        # ...
+        "project_name": project_name,
+        "framework": framework,
+        "language": language,
         "type": "ocr"
     }
 
@@ -73,7 +78,7 @@ def upsert_text_record(record: dict):
     except Exception as e:
         error_logger.warning(f"upsert_text_record failed: {str(e)} | Record: {record}")
 
-def upsert_element_record(record: dict):
+def upsert_element_record(record: dict, project_name: str, framework: str, language: str):
     document_content = record.get("html_snippet") or record.get("label_text") or record.get("intent")
 
     metadata = {
@@ -101,7 +106,10 @@ def upsert_element_record(record: dict):
         "used_in_tests": _sanitize_metadata_value(record.get("used_in_tests")),
         "last_tested": _sanitize_metadata_value(record.get("last_tested")),
         "healing_success_rate": record.get("healing_success_rate") or 0.0,
-        "type": "locator"
+        "type": "locator",
+        "project_name": project_name,
+        "framework": framework,
+        "language": language,
     }
 
     try:
@@ -118,9 +126,9 @@ def upsert_element_record(record: dict):
     except Exception as e:
         error_logger.warning(f"upsert_element_record failed: {str(e)} | Record: {record}")
 
-def fetch_ocr_entries():
+def fetch_ocr_entries(project_name: str, framework: str, language: str):
     try:
-        results = collection.get(where={"type": "ocr"})
+        results = collection.get(where={"type": "ocr","project_name": project_name, "framework": framework, "language": language})
         ocr_entries = []
         for id_, doc, meta in zip(results["ids"], results["documents"], results["metadatas"]):
             ocr_entries.append({
@@ -137,7 +145,6 @@ def fetch_ocr_entries():
     except Exception as e:
         error_logger.warning(f"fetch_ocr_entries failed: {str(e)}")
         return []
-
 
 def _update_locator_by_text_sync(entry_id: str, locator: str):
     """Synchronously update the locator field for a given record."""
@@ -156,6 +163,45 @@ def _update_locator_by_text_sync(entry_id: str, locator: str):
         )
     except Exception as e:
         error_logger.warning(f"_update_locator_by_text_sync failed: {str(e)} | ID: {entry_id}")
+
+def upsert_project_config(project_name: str, framework: str, language: str, extra: dict = None):
+    """
+    Store project-level config in ChromaDB.
+    The 'id' should be globally unique, e.g., f"project::{project_name}::{framework}::{language}"
+    """
+    config_id = f"project::{project_name}::{framework}::{language}"
+    config_doc = f"Config for {project_name} ({framework}, {language})"
+    metadata = {
+        "type": "project_config",
+        "project_name": project_name,
+        "framework": framework,
+        "language": language,
+    }
+    if extra:
+        metadata.update(extra)
+    collection.upsert(
+        documents=[config_doc],
+        metadatas=[metadata],
+        ids=[config_id]
+    )
+
+def fetch_all_projects():
+    try:
+        results = collection.get(where={"type": "project_config"})
+        projects = []
+        for meta in results["metadatas"]:
+            # You can return more fields as needed
+            projects.append({
+                "project_name": meta.get("project_name"),
+                "framework": meta.get("framework"),
+                "language": meta.get("language"),
+                # Optionally, add other fields
+            })
+        return projects
+    except Exception as e:
+        error_logger.warning(f"fetch_all_projects failed: {str(e)}")
+        return []
+
 
 
 async def update_locator_by_text(entry_id: str, locator: str):
