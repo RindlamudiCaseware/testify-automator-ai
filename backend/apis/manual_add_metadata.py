@@ -20,6 +20,7 @@ class ManualMetadataInput(BaseModel):
     value: Optional[str] = ""
     intent: Optional[str] = ""
     ocr_type: str  # e.g., "button", "textbox", etc.
+    tag_name: str
     dom_id: Optional[str] = ""
     dom_class: Optional[str] = ""
 
@@ -65,7 +66,7 @@ def build_complete_metadata(manual: ManualMetadataInput):
         "source_url": "",
         "bbox": bbox,
         "position_relation": "{}",
-        "tag_name": "",
+        "tag_name": manual.tag_name,
         "xpath": "",
         "get_by_text": manual.text or "",
         "get_by_role": "",
@@ -103,4 +104,17 @@ def build_complete_metadata(manual: ManualMetadataInput):
   "ocr_type": "button",
   "dom_id": "",
   "dom_class": "shopping_cart"
+}
+
+{
+  "page_name": "dashboard",
+  "placeholder": "",
+  "text": "customers",
+  "label_text": "customers",
+  "value": "",
+  "intent": "",
+  "ocr_type": "button",
+  "tag_name": "a",
+  "dom_id": "",
+  "dom_class": ""
 }
