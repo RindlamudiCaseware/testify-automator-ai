@@ -31,17 +31,17 @@ async def send_enrichment_requests(page_name: str):
     async with AsyncClient() as client:
         try:
             await client.post("http://localhost:8001/set-current-page-name", json={"page_name": page_name})
+            print('[DEBUG] set global CURRENT_PAGE_NAME = ', CURRENT_PAGE_NAME, ' Going for capture_dom_from_client')
         except Exception as e:
             print(f"🔥Error from: await client.post('8001/set-current-page-name': {e}")
             return {"status": "fail", "error": "set-current-page-name failed"}
-        print('[DEBUG] set global CURRENT_PAGE_NAME = ', CURRENT_PAGE_NAME, ' Going for capture_dom_from_client')
 
         try:
             resp = await client.post("http://localhost:8001/capture-dom-from-client", json={})
+            print('[DEBUG] capture_dom_from_client done. resp = ', resp, "Now trying to convert the data to json", sep='\n')
         except Exception as e:
             print("🔥🔥Error from: await client.post('8001/capture-from-dom-client'", e)
-            return {"status": "fail", "error": "capture-dom-from-client failed"}
-        print('[DEBUG] capture_dom_from_client done. resp = ', resp, "Now trying to convert the data to json", sep='\n')
+            # return {"status": "fail", "error": "capture-dom-from-client failed"}
 
         json_data = None
         try:
@@ -51,14 +51,12 @@ async def send_enrichment_requests(page_name: str):
                 return {"status": "fail", "error": "Empty or invalid response"}
         except Exception as e:
             print(f"🔥🔥🔥Error from: await resp.aread(): {e}")
-            print(f"🔥🔥🔥Error from: await resp.aread(): {e}")
             return {"status": "fail", "error": f"Error reading response: {e}"}
         
         # print("[DEBUG] decoded_json_data:", decoded_json_data)
         try:
             return json.loads(decoded_json_data)
         except Exception as e:
-            print("🔥🔥🔥🔥[ERROR] JSON parsing failed:", e)
             print("🔥🔥🔥🔥[ERROR] JSON parsing failed:", e)
             return {"status": "fail", "error": "Response parsing failed : {e}"}
 

@@ -248,7 +248,7 @@ def generate_from_user_story(req: UserStoryRequest):
         code = generate_test_code_from_methods(story, sub_method_map, path_pages, req.site_url)
         test_functions.append(code)
         results.append({
-            "manual_testcase": f"### Manual Test Case\n\n1. {story}\nExpected: Success",
+            "Prompt": f" Prompt\n\n1. {story}\nExpected: Success",
             "auto_testcase": code,
         })
 
