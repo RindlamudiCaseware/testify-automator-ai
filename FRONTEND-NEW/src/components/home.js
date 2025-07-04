@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Dashboard from "./dashboard";
+import { toast, ToastContainer } from "react-toastify";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const Home = () => {
 
   return (
     <div style={{ backgroundColor: "#f1f7fe", minHeight: "100vh" }}>
+      <ToastContainer/>
       <nav
         style={{
           backgroundColor: "#ffffff",

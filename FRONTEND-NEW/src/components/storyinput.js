@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 
 const StoryInput = ({ onBack, onNext }) => {
   const [userStoriesInput, setUserStoriesInput] = useState("");
@@ -56,6 +56,23 @@ const StoryInput = ({ onBack, onNext }) => {
     console.log("User Stories:", userStoriesInput);
   };
 
+  const handleJiraImport = async () => {
+    try {
+      const response = await axios.get("http://localhost:8001/jira/import"); 
+      const importedStories = response.data?.stories || [];
+
+      if (importedStories.length > 0) {
+        setUserStoriesInput(importedStories.join(" |\n"));
+        toast.success("User stories imported from Jira.");
+      } else {
+        toast.info("No stories found in Jira.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to import stories from Jira.");
+    }
+  };
+
   return (
     <div
       style={{
@@ -68,6 +85,7 @@ const StoryInput = ({ onBack, onNext }) => {
         paddingBottom: "30px",
       }}
     >
+      <ToastContainer/>
       <div
         style={{
           padding: "1rem 3rem",
@@ -108,7 +126,8 @@ const StoryInput = ({ onBack, onNext }) => {
             <p>Add user stories manually</p>
           </div>
 
-          <div
+          <button
+            onClick={handleJiraImport}
             style={{
               border: "1px solid grey",
               minWidth: "340px",
@@ -117,12 +136,18 @@ const StoryInput = ({ onBack, onNext }) => {
               textAlign: "center",
               backgroundColor: "#fff",
               flexShrink: 0,
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
             }}
           >
             <i className="fa-solid fa-file-import" style={{ fontSize: "30px", color: "green" }}></i>
-            <h3>Import from Jira</h3>
-            <p>Connect to Jira Instance</p>
-          </div>
+            <h3 style={{ margin: 0 , fontSize:"20px" }}>Import from Jira</h3>
+            <p style={{ margin: 0 , fontSize:"17px"}}>Connect to Jira Instance</p>
+          </button>
 
           <div
             style={{

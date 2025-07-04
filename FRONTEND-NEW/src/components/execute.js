@@ -1,6 +1,32 @@
-import React from "react";
+import React, { useState } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const Execute = ({ onBack, fullTestData }) => {
+  const [loadingExecution, setLoadingExecution] = useState(false);
+  const [executionSuccess, setExecutionSuccess] = useState(false);
+  const [executionError, setExecutionError] = useState(false);
+  const [executionResult, setExecutionResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const executeStoryTest = async () => {
+    setLoadingExecution(true);
+    setError("");
+    setExecutionResult(null);
+
+    try {
+      const response = await axios.post("http://localhost:8001/rag/run-generated-story-test");
+      setExecutionResult(response.data);
+      toast.success("✅ Execution successful.");
+      setExecutionSuccess(true);
+    } catch (err) {
+      setError(err.response?.data?.message || "Error executing story test.");
+      setExecutionError(true);
+    } finally {
+      setLoadingExecution(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -50,7 +76,6 @@ const Execute = ({ onBack, fullTestData }) => {
             display: "flex",
             flexWrap: "wrap",
             gap: "2rem",
-            justifyContent: "space-between",
           }}
         >
           {/* Project Summary Card */}
@@ -116,92 +141,28 @@ const Execute = ({ onBack, fullTestData }) => {
             </div>
           </div>
 
-          {/* Generation Settings Card */}
-          <div
+        </div>
+
+        {/* Execute Button */}
+        <div style={{ textAlign: "center", marginTop: "3rem" }}>
+          <button
+            onClick={executeStoryTest}
+            disabled={loadingExecution}
             style={{
-              flex: "1 1 300px",
-              border: "1px solid #e0e0e0",
-              borderRadius: "10px",
-              padding: "1.5rem",
-              backgroundColor: "#fff",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+              backgroundColor: loadingExecution ? "#ccc" : "#4CAF50",
+              color: "white",
+              padding: "12px 28px",
+              fontSize: "17px",
+              fontWeight: "600",
+              border: "none",
+              borderRadius: "8px",
+              cursor: loadingExecution ? "not-allowed" : "pointer",
+              boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+              transition: "all 0.3s ease",
             }}
           >
-            <h3
-              style={{
-                fontSize: "22px",
-                marginBottom: "1.5rem",
-                fontWeight: "600",
-                color: "#212121",
-                borderBottom: "1px solid #ddd",
-                paddingBottom: "10px",
-              }}
-            >
-              Test Generation Settings
-            </h3>
-
-            <div style={{ marginBottom: "1.8rem" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "16px",
-                  fontWeight: "500",
-                  marginBottom: "0.5rem",
-                  color: "#333",
-                }}
-              >
-                Select Test Framework
-              </label>
-              <select
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  fontSize: "15px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                  backgroundColor: "#fff",
-                  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)",
-                  transition: "border 0.2s ease",
-                }}
-              >
-                <option>Selenium (Web)</option>
-                <option>Playwright (Web)</option>
-                <option>Cypress (Web)</option>
-                <option>Appium (Mobile)</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "16px",
-                  fontWeight: "500",
-                  marginBottom: "0.5rem",
-                  color: "#333",
-                }}
-              >
-                Choose Programming Language
-              </label>
-              <select
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  fontSize: "15px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                  backgroundColor: "#fff",
-                  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)",
-                  transition: "border 0.2s ease",
-                }}
-              >
-                <option>Java</option>
-                <option>Python</option>
-                <option>JavaScript</option>
-                <option>C#</option>
-              </select>
-            </div>
-          </div>
+            {loadingExecution ? "Executing..." : "Execute"}
+          </button>
         </div>
       </div>
 
@@ -236,4 +197,3 @@ const Execute = ({ onBack, fullTestData }) => {
 };
 
 export default Execute;
-    
